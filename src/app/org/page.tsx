@@ -9,6 +9,7 @@ import { ListRow } from '@/components/ui/list-row'
 import { prisma } from '@/lib/prisma'
 import { Card, CardContent } from '@/components/ui/card'
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton'
+import { DeleteOrgButton } from '@/components/DeleteOrgButton'
 
 async function getOrgs(userId: string) {
   try {
@@ -110,50 +111,11 @@ export default async function OrgsPage() {
                 </Link>
                 {/* Delete button only for superadmins (checked server-side) */}
                 {isSuperAdmin ? (
-                  <form
-                    action={async () => {
-                      'use server'
-                      try {
-                        // Safety re-check
-                        const isSuper =
-                          await prisma.organizationMembership.findFirst({
-                            where: {
-                              userId: session.user.id,
-                              role: 'SUPERADMIN',
-                            },
-                          })
-                        if (!isSuper) return
-
-                        // Üye var mı? Member FK RESTRICT olduğu için önce silinmeli.
-                        const memberCount = await prisma.member.count({
-                          where: { organizationId: o.id },
-                        })
-                        if (memberCount > 0) {
-                          throw new Error(
-                            'Önce derneğe bağlı üyeleri silin veya üyeleri başka bir derneğe taşıyın.'
-                          )
-                        }
-
-                        await prisma.organization.delete({
-                          where: { id: o.id },
-                        })
-                        revalidatePath('/org')
-                      } catch (err) {
-                        console.error('Organization delete failed', {
-                          orgId: o.id,
-                          error: err,
-                        })
-                        // Basit bir hata yükselt; prod'da digest oluşacak, dev'de mesaj görünecek.
-                        throw err
-                      }
-                    }}
-                  >
-                    <ConfirmDeleteButton
-                      className="px-3 text-xs text-destructive hover:text-destructive/80 hidden group-hover:inline-flex items-center"
-                      confirmMessage={`${o.name} derneğini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
-                      label="Sil"
-                    />
-                  </form>
+                  <DeleteOrgButton
+                    id={o.id}
+                    name={o.name}
+                    memberCount={o._count?.members ?? 0}
+                  />
                 ) : null}
               </div>
             </ListRow>
