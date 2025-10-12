@@ -5,11 +5,11 @@ import { useToast } from '@/components/ui/toast'
 import { useGlobalLoading } from './GlobalLoadingProvider'
 
 export function DeleteOrgButton({
-  id,
+  slug,
   name,
   memberCount,
 }: {
-  id: string
+  slug: string
   name: string
   memberCount: number
 }) {
@@ -29,7 +29,7 @@ export function DeleteOrgButton({
     setLoading(true)
     startGlobal()
     try {
-      const res = await fetch(`/api/org/${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/org/${slug}`, { method: 'DELETE' })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         add({

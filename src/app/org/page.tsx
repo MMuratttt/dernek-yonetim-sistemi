@@ -112,7 +112,7 @@ export default async function OrgsPage() {
                 {/* Delete button only for superadmins (checked server-side) */}
                 {isSuperAdmin ? (
                   <DeleteOrgButton
-                    id={o.id}
+                    slug={o.slug}
                     name={o.name}
                     memberCount={o._count?.members ?? 0}
                   />

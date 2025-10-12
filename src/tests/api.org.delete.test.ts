@@ -4,8 +4,8 @@ vi.mock('../lib/auth', () => ({
   getSession: vi.fn(async () => ({ user: { id: 'user1' } })),
 }))
 
-const { deleteMock, findUniqueMock, findFirstMembershipMock } = vi.hoisted(
-  () => {
+const { deleteMock, findUniqueMock, findFirstMembershipMock, memberCountMock } =
+  vi.hoisted(() => {
     return {
       deleteMock: vi.fn().mockResolvedValue({ id: 'org1' }),
       findUniqueMock: vi.fn(async ({ where }: any) =>
@@ -18,9 +18,12 @@ const { deleteMock, findUniqueMock, findFirstMembershipMock } = vi.hoisted(
           ? { id: 'm1' }
           : null
       ),
+      memberCountMock: vi.fn(async ({ where }: any) => {
+        if (where.organizationId === 'org1') return 0
+        return 0
+      }),
     }
-  }
-)
+  })
 vi.mock('../lib/prisma', () => ({
   prisma: {
     organization: {
@@ -29,6 +32,9 @@ vi.mock('../lib/prisma', () => ({
     },
     organizationMembership: {
       findFirst: findFirstMembershipMock,
+    },
+    member: {
+      count: memberCountMock,
     },
   },
 }))
@@ -49,7 +55,7 @@ describe('DELETE /api/org/[slug]', () => {
     expect(res.status).toBe(404)
   })
 
-  it('deletes when superadmin', async () => {
+  it('deletes when superadmin and no members', async () => {
     deleteMock.mockClear()
     findUniqueMock.mockClear()
     const res = await deleteHandler(makeReq('org-to-delete'), {

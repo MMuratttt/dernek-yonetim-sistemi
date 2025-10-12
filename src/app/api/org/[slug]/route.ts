@@ -27,6 +27,18 @@ export async function DELETE(
   try {
     const org = await prisma.organization.findUnique({ where: { slug } })
     if (!org) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    // Member count guard (FK RESTRICT) – first ensure no members remain
+    const memberCount = await prisma.member.count({
+      where: { organizationId: org.id },
+    })
+    if (memberCount > 0) {
+      return NextResponse.json(
+        { error: 'Önce derneğe bağlı üyeleri silin veya taşıyın.' },
+        { status: 400 }
+      )
+    }
+
     await prisma.organization.delete({ where: { id: org.id } })
     return NextResponse.json({ ok: true })
   } catch (e) {
