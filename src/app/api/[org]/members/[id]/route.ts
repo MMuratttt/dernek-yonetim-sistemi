@@ -46,7 +46,60 @@ export async function GET(
   })
   if (!member)
     return NextResponse.json({ error: 'Üye bulunamadı' }, { status: 404 })
-  return NextResponse.json({ item: member })
+
+  // Aidat (dues) summary: CHARGE increases debt, PAYMENT decreases debt,
+  // REFUND reduces paid amount, ADJUSTMENT may be +/-.
+  // We'll compute totalCharges, totalPayments and donation (positive payments with type PAYMENT and planId null maybe?)
+  // For simplicity: borc = sum(CHARGE.amount) - sum(ADJUSTMENT where amount < 0) (treat negative adjustment as reducing charge)
+  // odenen = sum(PAYMENT.amount) + sum(ADJUSTMENT where amount > 0)
+  // kalan = borc - odenen
+  // bagis = sum of PAYMENT where reference = 'DONATION' OR (memberId set and planId null and type PAYMENT and amount > 0)
+  // If domain rules differ this can be adjusted later.
+  const txns = await prisma.financeTransaction.findMany({
+    where: { organizationId: access.org.id, memberId: member.id },
+    select: { type: true, amount: true, planId: true, reference: true },
+  })
+  let borc = 0
+  let odenen = 0
+  let bagis = 0
+  for (const t of txns) {
+    const amt = Number(t.amount)
+    switch (t.type) {
+      case 'CHARGE':
+        borc += amt
+        break
+      case 'PAYMENT':
+        odenen += amt
+        // Heuristic for donation
+        if (
+          !t.planId &&
+          (t.reference?.toLowerCase().includes('bagis') ||
+            t.reference?.toLowerCase().includes('bağış') ||
+            t.reference?.toLowerCase().includes('donation'))
+        ) {
+          bagis += amt
+        }
+        break
+      case 'REFUND':
+        // refund reduces paid amount
+        odenen -= amt
+        break
+      case 'ADJUSTMENT':
+        if (amt >= 0) odenen += amt
+        else borc += Math.abs(amt)
+        break
+    }
+  }
+  const kalan = borc - odenen
+
+  const dues = {
+    borc, // total charges
+    odenen, // total payments
+    kalan, // remaining balance (negative means overpaid)
+    bagis,
+  }
+
+  return NextResponse.json({ item: member, dues })
 }
 
 export async function PATCH(
