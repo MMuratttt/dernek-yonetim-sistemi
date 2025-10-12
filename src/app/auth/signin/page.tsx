@@ -21,7 +21,7 @@ export default function SignInPage() {
           <label className="block text-sm font-medium">E‑posta</label>
           <Input
             className="mt-1"
-            placeholder="superadmin@example.com"
+            placeholder="user@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
