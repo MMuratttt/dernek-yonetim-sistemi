@@ -1,4 +1,6 @@
-#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
+#!/usr/bin/env sh
 
-npx --no-install commitlint --edit $1
+# Husky v9+: sourcing the internal husky.sh is deprecated and no longer required.
+# Validate commit message with commitlint.
+
+npx --no-install commitlint --edit "$1"

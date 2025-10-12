@@ -1,8 +1,6 @@
 #!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
 
-npx lint-staged
-#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
+# Husky v9+: the helper script sourcing lines are deprecated and can be removed.
+# Keep the script minimal; rely on devDependencies already installed locally.
 
 npx --no-install lint-staged

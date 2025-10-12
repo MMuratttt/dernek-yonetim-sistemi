@@ -101,3 +101,40 @@ Varsayılan giriş (seed): admin@example.com / admin123
   - `SMTP_PORT=1025`
   - `MAIL_FROM=noreply@example.test`
 - Test endpoint: POST `/api/mail/test` (oturum gerektirir). MailHog UI’den iletileri görebilirsiniz.
+
+## Commit Mesaj Standardı (Conventional Commits)
+
+Bu projede commit mesajları için **Conventional Commits** formatını kullanıyoruz. Amaç otomatik sürümleme, değişiklik günlüğü (CHANGELOG) üretimi ve okunabilirliktir.
+
+Şablon dosyası: `.gitmessage.txt` (otomatik kullanmak için: `git config commit.template .gitmessage.txt`).
+
+Temel biçim:
+
+```
+<type>(opsiyonel-scope): <kısa açıklama>
+
+<gövde - opsiyonel>
+
+BREAKING CHANGE: <açıklama> (opsiyonel)
+Closes: #123 (opsiyonel)
+```
+
+Geçerli type değerleri:
+`feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
+
+Örnekler:
+
+```
+feat(auth): magic link ile giriş ekle
+fix(sms): boş telefon numarası hatasını düzelt
+refactor(prisma): ortak sorgu helper'a taşındı
+chore(ci): typecheck aşamasını pipeline'a ekle
+```
+
+İpuçları:
+
+- 72 karakteri geçmeyen özet satırı kullanın.
+- Gövdede "ne" yerine "neden" odaklı açıklama yapın.
+- Breaking change için `BREAKING CHANGE:` ile başlayın (semver major üretimine yardımcı olur).
+
+Gerekiyorsa commitlint kurallarını özelleştirmek için `commitlint.config.cjs` güncellenebilir.
