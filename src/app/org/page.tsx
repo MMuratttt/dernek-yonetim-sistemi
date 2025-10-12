@@ -8,6 +8,7 @@ import { getServerSession } from 'next-auth'
 import { ListRow } from '@/components/ui/list-row'
 import { prisma } from '@/lib/prisma'
 import { Card, CardContent } from '@/components/ui/card'
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton'
 
 async function getOrgs(userId: string) {
   try {
@@ -39,7 +40,10 @@ export default async function OrgsPage() {
 
   const items = await getOrgs(session.user.id)
   const totalOrgs = items.length
-  const totalMembers = items.reduce((acc, o: any) => acc + (o._count?.members ?? 0), 0)
+  const totalMembers = items.reduce(
+    (acc, o: any) => acc + (o._count?.members ?? 0),
+    0
+  )
   const isSuperAdmin = await prisma.organizationMembership.findFirst({
     where: { userId: session.user.id, role: 'SUPERADMIN' },
     select: { id: true },
@@ -47,7 +51,9 @@ export default async function OrgsPage() {
   return (
     <main>
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold leading-none tracking-tight">Dernekler</h1>
+        <h1 className="text-2xl font-semibold leading-none tracking-tight">
+          Dernekler
+        </h1>
       </div>
       <div className="mb-4 grid gap-3 sm:grid-cols-2">
         <Card>
@@ -65,7 +71,8 @@ export default async function OrgsPage() {
       </div>
       {items.length === 0 ? (
         <div className="rounded-md border bg-card p-6 text-sm text-muted-foreground">
-          Henüz dernek yok. Eğer süper yöneticisiniz, sağ üstten "Yeni Dernek" ekleyin.
+          Henüz dernek yok. Eğer süper yöneticisiniz, sağ üstten "Yeni Dernek"
+          ekleyin.
         </div>
       ) : (
         <ul className="divide-y rounded-md border bg-card">
@@ -91,10 +98,14 @@ export default async function OrgsPage() {
                       )}
                       <div>
                         <div className="font-medium">{o.name}</div>
-                        <div className="text-sm text-muted-foreground">/{o.slug}</div>
+                        <div className="text-sm text-muted-foreground">
+                          /{o.slug}
+                        </div>
                       </div>
                     </div>
-                    <div className="text-sm text-muted-foreground">Üye: {o._count?.members ?? 0}</div>
+                    <div className="text-sm text-muted-foreground">
+                      Üye: {o._count?.members ?? 0}
+                    </div>
                   </div>
                 </Link>
                 {/* Delete button only for superadmins (checked server-side) */}
@@ -103,25 +114,23 @@ export default async function OrgsPage() {
                     action={async () => {
                       'use server'
                       // Safety re-check
-                      const isSuper = await prisma.organizationMembership.findFirst({
-                        where: { userId: session.user.id, role: 'SUPERADMIN' },
-                      })
+                      const isSuper =
+                        await prisma.organizationMembership.findFirst({
+                          where: {
+                            userId: session.user.id,
+                            role: 'SUPERADMIN',
+                          },
+                        })
                       if (!isSuper) return
                       await prisma.organization.delete({ where: { id: o.id } })
                       revalidatePath('/org')
                     }}
                   >
-                    <button
-                      type="submit"
+                    <ConfirmDeleteButton
                       className="px-3 text-xs text-destructive hover:text-destructive/80 hidden group-hover:inline-flex items-center"
-                      onClick={(e) => {
-                        if (!confirm(`${o.name} derneğini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) {
-                          e.preventDefault()
-                        }
-                      }}
-                    >
-                      Sil
-                    </button>
+                      confirmMessage={`${o.name} derneğini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+                      label="Sil"
+                    />
                   </form>
                 ) : null}
               </div>

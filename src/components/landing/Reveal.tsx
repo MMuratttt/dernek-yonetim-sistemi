@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import { useEffect, useRef } from 'react'
 import clsx from 'clsx'
@@ -16,15 +16,20 @@ export default function Reveal({ children, className, delay = 0 }: Props) {
   useEffect(() => {
     const el = ref.current
     if (!el) return
+    let cancelled = false
+    let obs: IntersectionObserver | null = null
 
     const timer = setTimeout(() => {
-      const obs = new IntersectionObserver(
+      if (cancelled) return
+      if (!el.isConnected) return
+      obs = new IntersectionObserver(
         (entries) => {
           entries.forEach((entry) => {
             if (entry.isIntersecting) {
+              if (!el.isConnected) return
               el.classList.remove('reveal-hidden')
               el.classList.add('reveal-show')
-              obs.disconnect()
+              obs && obs.disconnect()
             }
           })
         },
@@ -33,7 +38,11 @@ export default function Reveal({ children, className, delay = 0 }: Props) {
       obs.observe(el)
     }, delay)
 
-    return () => clearTimeout(timer)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+      if (obs) obs.disconnect()
+    }
   }, [delay])
 
   return (
