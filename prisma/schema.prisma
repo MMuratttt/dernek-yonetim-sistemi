@@ -28,6 +28,8 @@ model Organization {
   memberships         OrganizationMembership[]
   tags                Tag[]
   templates           Template[]
+  smsCampaigns        SmsCampaign[]
+  smsMessages         SmsMessage[]
 }
 
 model Member {
@@ -55,6 +57,7 @@ model Member {
   organization        Organization         @relation(fields: [organizationId], references: [id])
   groups              MemberGroup[]
   tags                MemberTag[]
+  smsMessages         SmsMessage[]
 }
 
 model User {
@@ -382,6 +385,48 @@ model FinanceTransaction {
   @@index([organizationId, memberId, type, txnDate], map: "FinanceTransaction_main_idx")
 }
 
+// --- SMS / Messaging ---
+model SmsCampaign {
+  id             String            @id @default(cuid())
+  organizationId String
+  name           String
+  message        String
+  channel        MessageChannel    @default(SMS)
+  status         CampaignStatus    @default(DRAFT)
+  totalRecipients Int              @default(0)
+  sentCount      Int               @default(0)
+  failedCount    Int               @default(0)
+  createdAt      DateTime          @default(now())
+  startedAt      DateTime?
+  completedAt    DateTime?
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  messages       SmsMessage[]
+
+  @@index([organizationId, createdAt])
+}
+
+model SmsMessage {
+  id            String         @id @default(cuid())
+  organizationId String
+  campaignId    String?
+  memberId      String?
+  phone         String
+  content       String
+  channel       MessageChannel  @default(SMS)
+  status        MessageStatus   @default(PENDING)
+  provider      String?
+  providerMsgId String?
+  error         String?
+  createdAt     DateTime        @default(now())
+  sentAt        DateTime?
+  organization  Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  campaign      SmsCampaign?    @relation(fields: [campaignId], references: [id])
+  member        Member?         @relation(fields: [memberId], references: [id])
+
+  @@index([organizationId, campaignId])
+  @@index([organizationId, status])
+}
+
 enum MemberStatus {
   ACTIVE
   PASSIVE
@@ -455,4 +500,22 @@ enum PaymentMethod {
   BANK_TRANSFER
   CREDIT_CARD
   OTHER
+}
+
+enum MessageChannel {
+  SMS
+  WHATSAPP
+}
+
+enum MessageStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum CampaignStatus {
+  DRAFT
+  SENDING
+  COMPLETED
+  FAILED
 }

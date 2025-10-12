@@ -144,8 +144,18 @@ Notlar:
 
 ### Sprint 6 – Mesajlaşma
 
-- [ ] SMS/WhatsApp sağlayıcı adaptör katmanı
-- [ ] Kampanya oluşturma ve raporlar
+- [x] SMS/WhatsApp sağlayıcı adaptör katmanı (Dummy + Twilio provider; kampanya & log modelleri, bulk send API: POST /api/[org]/sms/send)
+- [x] Kişiselleştirme placeholder'ları: {{firstName}}, {{lastName}}, {{fullName}}
+- [x] Dakikalık rate limit (ENV: ORG_SMS_PER_MIN, varsayılan 60)
+- [x] Retry mekanizması (ENV: SMS_RETRY_LIMIT, varsayılan 2)
+- [ ] Kampanya oluşturma ve raporlar (UI & gelişmiş istatistikler beklemede)
+
+ENV Değişkenleri (SMS):
+
+- SMS_PROVIDER=dummy|twilio
+- TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_FROM
+- ORG_SMS_PER_MIN=60
+- SMS_RETRY_LIMIT=2
 
 ---
 

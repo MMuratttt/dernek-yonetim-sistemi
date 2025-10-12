@@ -39,6 +39,7 @@
     "next": "latest",
     "next-auth": "latest",
     "nodemailer": "^6.9.14",
+    "twilio": "^5.4.4",
     "react": "latest",
     "react-dom": "latest",
     "react-hook-form": "^7.62.0",
