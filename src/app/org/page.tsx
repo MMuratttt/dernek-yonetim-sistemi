@@ -10,6 +10,7 @@ import { prisma } from '@/lib/prisma'
 import { Card, CardContent } from '@/components/ui/card'
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton'
 import { DeleteOrgButton } from '@/components/DeleteOrgButton'
+import { redirect } from 'next/navigation'
 
 async function getOrgs(userId: string) {
   try {
@@ -22,9 +23,9 @@ async function getOrgs(userId: string) {
       orderBy: { createdAt: 'desc' },
       include: { _count: { select: { members: true } } },
     })) as any[]
-    return items
+    return { items, isSuperAdmin: Boolean(superadmin) }
   } catch {
-    return []
+    return { items: [], isSuperAdmin: false }
   }
 }
 
@@ -39,88 +40,173 @@ export default async function OrgsPage() {
     )
   }
 
-  const items = await getOrgs(session.user.id)
+  const { items, isSuperAdmin } = await getOrgs(session.user.id)
+
+  // If user is admin (not superadmin) and has exactly one org, redirect directly to it
+  if (!isSuperAdmin && items.length === 1) {
+    redirect(`/${items[0].slug}`)
+  }
+
   const totalOrgs = items.length
   const totalMembers = items.reduce(
     (acc, o: any) => acc + (o._count?.members ?? 0),
     0
   )
-  const isSuperAdmin = await prisma.organizationMembership.findFirst({
-    where: { userId: session.user.id, role: 'SUPERADMIN' },
-    select: { id: true },
-  })
+
   return (
     <main>
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold leading-none tracking-tight">
-          Dernekler
-        </h1>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold leading-none tracking-tight">
+            Dernekler
+          </h1>
+          <p className="text-sm text-muted-foreground mt-2">
+            Yönettiğiniz dernekleri görüntüleyin ve yönetin
+          </p>
+        </div>
       </div>
-      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-muted-foreground">Toplam Dernek</div>
-            <div className="text-2xl font-semibold">{totalOrgs}</div>
+          <CardContent className="p-6">
+            <div className="text-sm font-medium text-muted-foreground">
+              Toplam Dernek
+            </div>
+            <div className="text-3xl font-bold mt-2">{totalOrgs}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-muted-foreground">Toplam Üye</div>
-            <div className="text-2xl font-semibold">{totalMembers}</div>
+          <CardContent className="p-6">
+            <div className="text-sm font-medium text-muted-foreground">
+              Toplam Üye
+            </div>
+            <div className="text-3xl font-bold mt-2">{totalMembers}</div>
           </CardContent>
         </Card>
       </div>
       {items.length === 0 ? (
-        <div className="rounded-md border bg-card p-6 text-sm text-muted-foreground">
-          Henüz dernek yok. Eğer süper yöneticisiniz, sağ üstten "Yeni Dernek"
-          ekleyin.
-        </div>
+        <Card>
+          <CardContent className="p-8 text-center">
+            <div className="text-muted-foreground mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-12 w-12 mx-auto mb-4 opacity-50"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                />
+              </svg>
+              <p className="text-lg font-medium">Henüz dernek yok</p>
+              <p className="text-sm mt-1">
+                {isSuperAdmin
+                  ? 'Başlamak için yeni bir dernek oluşturun'
+                  : 'Bir süper yöneticinin sizi bir derneğe eklemesini bekleyin'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
-        <ul className="divide-y rounded-md border bg-card">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((o) => (
-            <ListRow key={o.id} className="p-0 group">
-              <div className="flex items-stretch">
-                <Link
-                  href={`/${o.slug}/members`}
-                  className="flex-1 block p-4 hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      {o.logoUrl ? (
-                        <Image
-                          src={o.logoUrl}
-                          alt="logo"
-                          width={32}
-                          height={32}
-                          className="rounded border bg-background object-contain"
-                        />
-                      ) : (
-                        <div className="h-8 w-8 rounded border bg-background" />
-                      )}
-                      <div>
-                        <div className="font-medium">{o.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          /{o.slug}
+            <Card
+              key={o.id}
+              className="group hover:shadow-lg transition-shadow"
+            >
+              <CardContent className="p-0">
+                <Link href={`/${o.slug}`} className="block p-6">
+                  <div className="flex items-start gap-4">
+                    {o.logoUrl ? (
+                      <Image
+                        src={o.logoUrl}
+                        alt={o.name}
+                        width={56}
+                        height={56}
+                        className="rounded-lg border bg-background object-contain flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="h-14 w-14 rounded-lg border bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center flex-shrink-0">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-6 w-6 text-primary"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                          />
+                        </svg>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-lg mb-1 truncate group-hover:text-primary transition-colors">
+                        {o.name}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        /{o.slug}
+                      </p>
+                      <div className="flex items-center gap-4 text-sm">
+                        <div className="flex items-center gap-1.5">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4 text-muted-foreground"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                            />
+                          </svg>
+                          <span className="font-medium">
+                            {o._count?.members ?? 0}
+                          </span>
+                          <span className="text-muted-foreground">üye</span>
                         </div>
                       </div>
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      Üye: {o._count?.members ?? 0}
+                    <div className="flex items-center">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
                     </div>
                   </div>
                 </Link>
-                {/* Delete button only for superadmins (checked server-side) */}
-                {isSuperAdmin ? (
-                  <DeleteOrgButton
-                    slug={o.slug}
-                    name={o.name}
-                    memberCount={o._count?.members ?? 0}
-                  />
-                ) : null}
-              </div>
-            </ListRow>
+                {isSuperAdmin && (
+                  <div className="border-t">
+                    <DeleteOrgButton
+                      slug={o.slug}
+                      name={o.name}
+                      memberCount={o._count?.members ?? 0}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           ))}
-        </ul>
+        </div>
       )}
     </main>
   )

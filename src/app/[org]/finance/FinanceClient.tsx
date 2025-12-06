@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -22,6 +22,11 @@ export default function FinanceClient({
   const [tx, setTx] = useState(initial.tx as any[])
   const [balances, setBalances] = useState<any[]>([])
   const [showBulkDebitModal, setShowBulkDebitModal] = useState(false)
+
+  // Load balances on mount
+  useEffect(() => {
+    refreshBalances()
+  }, [org])
 
   async function createPlan(form: FormData) {
     const body = {
@@ -282,33 +287,131 @@ export default function FinanceClient({
         </ul>
       </Card>
 
-      <Card className="p-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="font-medium">Bakiyeler</h2>
+      <Card className="p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">Bakiyeler</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Tüm üyelerin finansal durumu ({balances.length} üye)
+            </p>
+          </div>
           <Button size="sm" variant="outline" onClick={() => refreshBalances()}>
-            Yenile
+            🔄 Yenile
           </Button>
         </div>
-        <ul className="text-sm">
-          {balances.map((b) => (
-            <li key={b.memberId}>
-              {b.name ?? b.memberId}: bakiye {b.balance.toFixed(2)} (borç{' '}
-              {b.charges.toFixed(2)} / ödeme {b.payments.toFixed(2)})
-            </li>
-          ))}
-        </ul>
+
+        {balances.length === 0 ? (
+          <div className="py-12 text-center">
+            <p className="text-gray-500">Henüz bakiye bilgisi bulunmuyor.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b-2 border-gray-200">
+                  <th className="pb-3 text-left font-semibold text-gray-700">
+                    Üye
+                  </th>
+                  <th className="pb-3 text-right font-semibold text-gray-700">
+                    Borç
+                  </th>
+                  <th className="pb-3 text-right font-semibold text-gray-700">
+                    Ödeme
+                  </th>
+                  <th className="pb-3 text-right font-semibold text-gray-700">
+                    Bakiye
+                  </th>
+                  <th className="pb-3 text-right font-semibold text-gray-700">
+                    Durum
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {balances
+                  .sort(
+                    (a: any, b: any) => Number(b.balance) - Number(a.balance)
+                  )
+                  .map((b, idx) => {
+                    const balance = Number(b.balance)
+                    const isDebtor = balance > 0
+                    const isCreditor = balance < 0
+
+                    return (
+                      <tr
+                        key={b.memberId}
+                        className={`border-b border-gray-100 transition-colors hover:bg-gray-50 ${
+                          idx % 2 === 0 ? 'bg-white' : 'bg-gray-25'
+                        }`}
+                      >
+                        <td className="py-3 pr-4">
+                          <div className="font-medium text-gray-900">
+                            {b.name ?? b.memberId}
+                          </div>
+                          {b.name && (
+                            <div className="text-xs text-gray-500">
+                              ID: {b.memberId}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3 text-right font-mono text-sm text-red-600">
+                          {b.charges.toFixed(2)} ₺
+                        </td>
+                        <td className="py-3 text-right font-mono text-sm text-green-600">
+                          {b.payments.toFixed(2)} ₺
+                        </td>
+                        <td
+                          className={`py-3 text-right font-mono font-semibold text-base ${
+                            isDebtor
+                              ? 'text-red-700'
+                              : isCreditor
+                                ? 'text-green-700'
+                                : 'text-gray-700'
+                          }`}
+                        >
+                          {balance.toFixed(2)} ₺
+                        </td>
+                        <td className="py-3 text-right">
+                          {isDebtor ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-800">
+                              💳 Borçlu
+                            </span>
+                          ) : isCreditor ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-800">
+                              ✅ Fazla Ödeme
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+                              ⚖️ Dengede
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
-      <Card className="p-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="font-medium">Borçlu Üyeler</h2>
+      <Card className="p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-red-700">
+              Borçlu Üyeler
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              {balances.filter((b: any) => Number(b.balance) > 0).length} üye
+              borçlu durumda
+            </p>
+          </div>
           <div className="flex gap-2">
             <Button
               size="sm"
               variant="outline"
               onClick={() => refreshBalances()}
             >
-              Yenile
+              🔄 Yenile
             </Button>
             <Button
               size="sm"
@@ -355,76 +458,158 @@ export default function FinanceClient({
                 URL.revokeObjectURL(url)
               }}
             >
-              CSV Dışa Aktar
+              📊 CSV Dışa Aktar
             </Button>
           </div>
         </div>
-        <ul className="text-sm">
-          {balances
-            .filter((b: any) => Number(b.balance) > 0)
-            .sort((a: any, b: any) => Number(b.balance) - Number(a.balance))
-            .map((b: any) => (
-              <li key={b.memberId}>
-                {b.name ?? b.memberId}: bakiye {b.balance.toFixed(2)}
-              </li>
-            ))}
-        </ul>
+
+        {balances.filter((b: any) => Number(b.balance) > 0).length === 0 ? (
+          <div className="py-12 text-center">
+            <div className="text-6xl mb-4">🎉</div>
+            <p className="text-lg font-medium text-gray-700">
+              Harika! Hiç borçlu üye yok.
+            </p>
+            <p className="text-sm text-gray-500 mt-1">
+              Tüm üyeler ödemelerini tamamlamış.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <span className="text-red-600 text-lg">⚠️</span>
+                <div>
+                  <p className="text-sm font-medium text-red-800">
+                    Toplam Borç:{' '}
+                    {balances
+                      .filter((b: any) => Number(b.balance) > 0)
+                      .reduce(
+                        (sum: number, b: any) => sum + Number(b.balance),
+                        0
+                      )
+                      .toFixed(2)}{' '}
+                    ₺
+                  </p>
+                  <p className="text-xs text-red-600 mt-1">
+                    Borçlu üye sayısı:{' '}
+                    {balances.filter((b: any) => Number(b.balance) > 0).length}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b-2 border-red-200 bg-red-50">
+                  <th className="py-3 px-4 text-left font-semibold text-red-900">
+                    Sıra
+                  </th>
+                  <th className="py-3 px-4 text-left font-semibold text-red-900">
+                    Üye Adı
+                  </th>
+                  <th className="py-3 px-4 text-right font-semibold text-red-900">
+                    Toplam Borç
+                  </th>
+                  <th className="py-3 px-4 text-right font-semibold text-red-900">
+                    Ödenen
+                  </th>
+                  <th className="py-3 px-4 text-right font-semibold text-red-900">
+                    Kalan Borç
+                  </th>
+                  <th className="py-3 px-4 text-center font-semibold text-red-900">
+                    Durum
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {balances
+                  .filter((b: any) => Number(b.balance) > 0)
+                  .sort(
+                    (a: any, b: any) => Number(b.balance) - Number(a.balance)
+                  )
+                  .map((b: any, idx: number) => {
+                    const balance = Number(b.balance)
+                    const charges = Number(b.charges)
+                    const payments = Number(b.payments)
+                    const paymentPercentage =
+                      charges > 0 ? (payments / charges) * 100 : 0
+
+                    return (
+                      <tr
+                        key={b.memberId}
+                        className="border-b border-red-100 transition-colors hover:bg-red-50"
+                      >
+                        <td className="py-3 px-4">
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-red-100 text-red-700 font-semibold text-sm">
+                            {idx + 1}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="font-medium text-gray-900">
+                            {b.name ?? b.memberId}
+                          </div>
+                          {b.name && (
+                            <div className="text-xs text-gray-500">
+                              ID: {b.memberId}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono text-sm text-gray-700">
+                          {charges.toFixed(2)} ₺
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="font-mono text-sm text-green-600">
+                            {payments.toFixed(2)} ₺
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            %{paymentPercentage.toFixed(0)} ödendi
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-bold text-base text-red-700">
+                          {balance.toFixed(2)} ₺
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          {balance > 1000 ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-3 py-1.5 text-xs font-bold text-white">
+                              🔴 Yüksek Borç
+                            </span>
+                          ) : balance > 500 ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white">
+                              🟠 Orta Borç
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500 px-3 py-1.5 text-xs font-medium text-white">
+                              🟡 Düşük Borç
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
-      {canWrite && (
-        <Card className="p-4">
-          <h2 className="mb-2 font-medium">Toplu Borçlandırma</h2>
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault()
-              const form = new FormData(e.currentTarget)
-              await generateCharges(form)
-            }}
-            className="grid grid-cols-6 gap-2"
-          >
-            <select className="col-span-2" name="gplanId">
-              {plans.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            <select className="col-span-2" name="gperiodId">
-              {periods.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            <Input
-              name="gamount"
-              type="number"
-              step="0.01"
-              placeholder="Tutarı override (opsiyonel)"
-            />
-            <label className="col-span-6 inline-flex items-center gap-2 text-sm">
-              <input type="checkbox" name="gdryrun" /> Dry-run (sadece say)
-            </label>
-            <div className="col-span-6">
-              <Button size="sm" type="submit">
-                Borçlandır
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
-
-      {canWrite && (
-        <Card className="p-4">
-          <h2 className="mb-2 font-medium">Toplu Borçlandırma (Yeni)</h2>
-          <p className="mb-3 text-sm text-muted-foreground">
-            Üyeleri seçerek toplu borçlandırma yapabilirsiniz
+      <Card className="p-4">
+        <h2 className="mb-2 font-medium">Toplu Borçlandırma</h2>
+        <p className="mb-3 text-sm text-muted-foreground">
+          Üyeleri seçerek toplu borçlandırma yapabilirsiniz
+        </p>
+        <Button
+          onClick={() => setShowBulkDebitModal(true)}
+          size="sm"
+          disabled={!canWrite}
+        >
+          Toplu Borçlandırma Aç
+        </Button>
+        {!canWrite && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Yalnızca yöneticiler kullanabilir
           </p>
-          <Button onClick={() => setShowBulkDebitModal(true)} size="sm">
-            Toplu Borçlandırma Aç
-          </Button>
-        </Card>
-      )}
+        )}
+      </Card>
 
       {showBulkDebitModal && (
         <BulkDebitModal
