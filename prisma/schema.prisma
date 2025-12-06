@@ -30,10 +30,11 @@ model Organization {
   templates           Template[]
   smsCampaigns        SmsCampaign[]
   smsMessages         SmsMessage[]
+  scheduledDebits     ScheduledDebit[]
 }
 
 model Member {
-  id                  String               @id @default(cuid())
+  id                  String                 @id @default(cuid())
   organizationId      String
   firstName           String
   lastName            String
@@ -42,22 +43,23 @@ model Member {
   phone               String?
   address             String?
   occupation          String?
-  status              MemberStatus         @default(ACTIVE)
-  joinedAt            DateTime             @default(now())
+  status              MemberStatus           @default(ACTIVE)
+  joinedAt            DateTime               @default(now())
   leftAt              DateTime?
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
   photoUrl            String?
   boardMemberships    BoardMember[]
   financeTransactions FinanceTransaction[]
   attendance          MeetingAttendance[]
   invites             MeetingInvite[]
-  proxiesAsPrincipal  MeetingProxy[]       @relation("PrincipalMember")
-  proxiesAsProxy      MeetingProxy[]       @relation("ProxyMember")
-  organization        Organization         @relation(fields: [organizationId], references: [id])
+  proxiesAsPrincipal  MeetingProxy[]         @relation("PrincipalMember")
+  proxiesAsProxy      MeetingProxy[]         @relation("ProxyMember")
+  organization        Organization           @relation(fields: [organizationId], references: [id])
   groups              MemberGroup[]
   tags                MemberTag[]
   smsMessages         SmsMessage[]
+  scheduledDebits     ScheduledDebitMember[]
 
   @@unique([organizationId, nationalId], map: "Member_org_nationalId_unique")
 }
@@ -387,43 +389,77 @@ model FinanceTransaction {
   @@index([organizationId, memberId, type, txnDate], map: "FinanceTransaction_main_idx")
 }
 
-// --- SMS / Messaging ---
-model SmsCampaign {
-  id             String            @id @default(cuid())
+model ScheduledDebit {
+  id             String                 @id @default(cuid())
   organizationId String
   name           String
-  message        String
-  channel        MessageChannel    @default(SMS)
-  status         CampaignStatus    @default(DRAFT)
-  totalRecipients Int              @default(0)
-  sentCount      Int               @default(0)
-  failedCount    Int               @default(0)
-  createdAt      DateTime          @default(now())
-  startedAt      DateTime?
-  completedAt    DateTime?
-  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  messages       SmsMessage[]
+  debitType      DebitType              @default(AIDAT)
+  amount         Decimal                @db.Decimal(12, 2)
+  currency       String                 @default("TRY")
+  year           Int?
+  scheduledDate  DateTime?              @db.Timestamp(6)
+  status         ScheduledDebitStatus   @default(PENDING)
+  createdBy      String?
+  createdAt      DateTime               @default(now()) @db.Timestamp(6)
+  processedAt    DateTime?              @db.Timestamp(6)
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members        ScheduledDebitMember[]
+
+  @@index([organizationId, status, scheduledDate])
+}
+
+model ScheduledDebitMember {
+  id               String         @id @default(cuid())
+  scheduledDebitId String
+  memberId         String
+  amount           Decimal        @db.Decimal(12, 2)
+  currency         String         @default("TRY")
+  status           String         @default("PENDING")
+  createdAt        DateTime       @default(now()) @db.Timestamp(6)
+  scheduledDebit   ScheduledDebit @relation(fields: [scheduledDebitId], references: [id], onDelete: Cascade)
+  member           Member         @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([scheduledDebitId, memberId])
+  @@index([scheduledDebitId, status])
+}
+
+// --- SMS / Messaging ---
+model SmsCampaign {
+  id              String         @id @default(cuid())
+  organizationId  String
+  name            String
+  message         String
+  channel         MessageChannel @default(SMS)
+  status          CampaignStatus @default(DRAFT)
+  totalRecipients Int            @default(0)
+  sentCount       Int            @default(0)
+  failedCount     Int            @default(0)
+  createdAt       DateTime       @default(now())
+  startedAt       DateTime?
+  completedAt     DateTime?
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  messages        SmsMessage[]
 
   @@index([organizationId, createdAt])
 }
 
 model SmsMessage {
-  id            String         @id @default(cuid())
+  id             String         @id @default(cuid())
   organizationId String
-  campaignId    String?
-  memberId      String?
-  phone         String
-  content       String
-  channel       MessageChannel  @default(SMS)
-  status        MessageStatus   @default(PENDING)
-  provider      String?
-  providerMsgId String?
-  error         String?
-  createdAt     DateTime        @default(now())
-  sentAt        DateTime?
-  organization  Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  campaign      SmsCampaign?    @relation(fields: [campaignId], references: [id])
-  member        Member?         @relation(fields: [memberId], references: [id])
+  campaignId     String?
+  memberId       String?
+  phone          String
+  content        String
+  channel        MessageChannel @default(SMS)
+  status         MessageStatus  @default(PENDING)
+  provider       String?
+  providerMsgId  String?
+  error          String?
+  createdAt      DateTime       @default(now())
+  sentAt         DateTime?
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  campaign       SmsCampaign?   @relation(fields: [campaignId], references: [id])
+  member         Member?        @relation(fields: [memberId], references: [id])
 
   @@index([organizationId, campaignId])
   @@index([organizationId, status])
@@ -518,6 +554,18 @@ enum MessageStatus {
 enum CampaignStatus {
   DRAFT
   SENDING
+  COMPLETED
+  FAILED
+}
+
+enum DebitType {
+  AIDAT
+  TARIH_GIREREK
+}
+
+enum ScheduledDebitStatus {
+  PENDING
+  PROCESSING
   COMPLETED
   FAILED
 }

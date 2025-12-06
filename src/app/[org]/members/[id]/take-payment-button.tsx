@@ -156,7 +156,7 @@ export const TakePaymentButton: React.FC<Props> = ({
             </div>
             <div className="p-4 space-y-4 text-sm">
               <div>
-                <label className="block text-xs font-medium mb-1">
+                <label className="block text-xs font-medium mb-1 text-foreground">
                   Tutar (TRY)
                 </label>
                 <input
@@ -164,15 +164,17 @@ export const TakePaymentButton: React.FC<Props> = ({
                   onChange={(e) => setAmount(e.target.value)}
                   type="text"
                   inputMode="decimal"
-                  className="w-full rounded border px-3 py-2"
+                  className="w-full rounded border px-3 py-2 bg-background text-foreground"
                   placeholder="0,00"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium mb-1">Plan</label>
+                  <label className="block text-xs font-medium mb-1 text-foreground">
+                    Plan
+                  </label>
                   <select
-                    className="w-full rounded border px-3 py-2"
+                    className="w-full rounded border px-3 py-2 bg-background text-foreground"
                     value={planId}
                     onChange={(e) => setPlanId(e.target.value)}
                   >
@@ -185,11 +187,11 @@ export const TakePaymentButton: React.FC<Props> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1">
+                  <label className="block text-xs font-medium mb-1 text-foreground">
                     Dönem
                   </label>
                   <select
-                    className="w-full rounded border px-3 py-2"
+                    className="w-full rounded border px-3 py-2 bg-background text-foreground"
                     value={periodId}
                     onChange={(e) => setPeriodId(e.target.value)}
                     disabled={!planId || periods.length === 0}
@@ -210,11 +212,11 @@ export const TakePaymentButton: React.FC<Props> = ({
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1">
+                <label className="block text-xs font-medium mb-1 text-foreground">
                   Ödeme Yöntemi
                 </label>
                 <select
-                  className="w-full rounded border px-3 py-2"
+                  className="w-full rounded border px-3 py-2 bg-background text-foreground"
                   value={method}
                   onChange={(e) => setMethod(e.target.value as any)}
                 >
@@ -226,21 +228,21 @@ export const TakePaymentButton: React.FC<Props> = ({
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium mb-1">
+                  <label className="block text-xs font-medium mb-1 text-foreground">
                     Makbuz No
                   </label>
                   <input
-                    className="w-full rounded border px-3 py-2"
+                    className="w-full rounded border px-3 py-2 bg-background text-foreground"
                     value={receiptNo}
                     onChange={(e) => setReceiptNo(e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1">
+                  <label className="block text-xs font-medium mb-1 text-foreground">
                     Referans
                   </label>
                   <input
-                    className="w-full rounded border px-3 py-2"
+                    className="w-full rounded border px-3 py-2 bg-background text-foreground"
                     value={reference}
                     onChange={(e) => setReference(e.target.value)}
                     placeholder="örn: BAGIS"
@@ -254,14 +256,16 @@ export const TakePaymentButton: React.FC<Props> = ({
                   checked={isDonation}
                   onChange={(e) => setIsDonation(e.target.checked)}
                 />
-                <label htmlFor="isDonation" className="text-xs">
+                <label htmlFor="isDonation" className="text-xs text-foreground">
                   Bağış olarak işaretle
                 </label>
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1">Not</label>
+                <label className="block text-xs font-medium mb-1 text-foreground">
+                  Not
+                </label>
                 <textarea
-                  className="w-full rounded border px-3 py-2"
+                  className="w-full rounded border px-3 py-2 bg-background text-foreground"
                   rows={2}
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
