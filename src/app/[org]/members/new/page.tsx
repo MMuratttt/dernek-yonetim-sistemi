@@ -59,7 +59,8 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 // Accept loose props to satisfy Next.js PageProps (params may be a Promise in generated types)
-export default function NewMemberPage({ params }: any) {
+export default function NewMemberPage({ params: paramsPromise }: any) {
+  const params = React.use(paramsPromise)
   const router = useRouter()
   useEffect(() => {
     async function guard() {

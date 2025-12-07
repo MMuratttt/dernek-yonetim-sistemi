@@ -61,9 +61,9 @@ Notlar:
 
 ## M6 – Üyelik Aidat/Finans
 
-- [x] Aidat planları, dönemler, ödeme kaydı (CRUD başlangıç API’leri ve basit UI)
+- [x] Aidat planları, dönemler, ödeme kaydı (CRUD başlangıç API'leri ve basit UI)
 - [x] Makbuz PDF (tek işlem için basit Playwright çıktısı)
-- [ ] Borç (otomatik borçlandırma) ve bakiye hesaplama, raporlar
+- [x] Borç (otomatik borçlandırma) ve bakiye hesaplama, raporlar
 
 ## M7 – İletişim (Toplu SMS / WhatsApp / E-posta)
 

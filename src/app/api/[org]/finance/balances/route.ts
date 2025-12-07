@@ -33,7 +33,7 @@ export async function GET(
       SUM(CASE WHEN type = 'REFUND' THEN amount ELSE 0 END) as total_refunds,
       SUM(CASE WHEN type = 'ADJUSTMENT' THEN amount ELSE 0 END) as total_adjustments
     FROM "FinanceTransaction"
-    WHERE "organizationId" = $1 ${memberId ? 'AND "memberId" = $2' : ''}
+    WHERE "organizationId" = $1 AND "memberId" IS NOT NULL ${memberId ? 'AND "memberId" = $2' : ''}
     GROUP BY "memberId"
   `,
     ...(memberId ? [access.org.id, memberId] : [access.org.id])

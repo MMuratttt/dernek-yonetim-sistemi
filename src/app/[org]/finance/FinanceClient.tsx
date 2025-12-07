@@ -22,11 +22,61 @@ export default function FinanceClient({
   const [tx, setTx] = useState(initial.tx as any[])
   const [balances, setBalances] = useState<any[]>([])
   const [showBulkDebitModal, setShowBulkDebitModal] = useState(false)
+  const [reports, setReports] = useState<any>(null)
+  const [bulkDebits, setBulkDebits] = useState<any[]>([])
+  const [isProcessingBulkDebit, setIsProcessingBulkDebit] = useState<
+    string | null
+  >(null)
 
   // Load balances on mount
   useEffect(() => {
     refreshBalances()
+    loadReports()
+    loadBulkDebits()
   }, [org])
+
+  async function loadReports() {
+    const res = await fetch(`/api/${org}/finance/reports?type=overview`)
+    if (res.ok) {
+      const data = await res.json()
+      setReports(data)
+    }
+  }
+
+  async function loadBulkDebits() {
+    const res = await fetch(`/api/${org}/finance/bulk-debit`)
+    if (res.ok) {
+      const data = await res.json()
+      setBulkDebits(data.items || [])
+    }
+  }
+
+  async function processBulkDebit(id: string) {
+    if (
+      !confirm(
+        'Bu toplu borçlandırmayı işlemek istediğinizden emin misiniz? Bu işlem geri alınamaz.'
+      )
+    ) {
+      return
+    }
+    setIsProcessingBulkDebit(id)
+    try {
+      const res = await fetch(`/api/${org}/finance/bulk-debit`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+      if (res.ok) {
+        alert('Borçlandırma başarıyla işlendi!')
+        await Promise.all([loadBulkDebits(), refreshBalances(), loadReports()])
+      } else {
+        const err = await res.json()
+        alert('Hata: ' + (err.error || 'Bilinmeyen hata'))
+      }
+    } finally {
+      setIsProcessingBulkDebit(null)
+    }
+  }
 
   async function createPlan(form: FormData) {
     const body = {
@@ -121,171 +171,216 @@ export default function FinanceClient({
 
   return (
     <div className="grid gap-6">
-      <Card className="p-4">
-        <h2 className="mb-2 font-medium">Plan Oluştur</h2>
-        {canWrite ? (
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault()
-              const form = new FormData(e.currentTarget)
-              await createPlan(form)
-            }}
-            className="grid grid-cols-6 gap-2"
-          >
-            <Input name="name" placeholder="Plan adı" className="col-span-2" />
-            <Input
-              name="amount"
-              type="number"
-              step="0.01"
-              placeholder="Tutar"
-            />
-            <Input name="currency" defaultValue="TRY" placeholder="TRY" />
-            <Select name="frequency" defaultValue="MONTHLY">
-              <option value="MONTHLY">Aylık</option>
-              <option value="QUARTERLY">3 Aylık</option>
-              <option value="YEARLY">Yıllık</option>
-              <option value="ONE_TIME">Tek Sefer</option>
-            </Select>
-            <Input
-              name="description"
-              placeholder="Açıklama (opsiyonel)"
-              className="col-span-6"
-            />
-            <div className="col-span-6">
-              <Button type="submit" size="sm">
-                Ekle
-              </Button>
+      {/* Financial Overview Report */}
+      {reports?.overview && (
+        <Card className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+          <h2 className="text-xl font-semibold mb-4 text-blue-900">
+            📊 Finansal Özet
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-lg p-4 shadow-sm">
+              <div className="text-sm text-gray-600 mb-1">Toplam İşlem</div>
+              <div className="text-2xl font-bold text-gray-900">
+                {reports.overview.totalTransactions}
+              </div>
             </div>
-          </form>
-        ) : (
-          <p className="text-sm text-muted-foreground">Yalnızca görüntüleme</p>
+            <div className="bg-white rounded-lg p-4 shadow-sm">
+              <div className="text-sm text-gray-600 mb-1">Toplam Borç</div>
+              <div className="text-2xl font-bold text-red-600">
+                {reports.overview.totalCharges.toFixed(2)} ₺
+              </div>
+            </div>
+            <div className="bg-white rounded-lg p-4 shadow-sm">
+              <div className="text-sm text-gray-600 mb-1">Toplam Ödeme</div>
+              <div className="text-2xl font-bold text-green-600">
+                {reports.overview.totalPayments.toFixed(2)} ₺
+              </div>
+            </div>
+            <div className="bg-white rounded-lg p-4 shadow-sm">
+              <div className="text-sm text-gray-600 mb-1">Net Bakiye</div>
+              <div
+                className={`text-2xl font-bold ${
+                  reports.overview.netBalance > 0
+                    ? 'text-red-600'
+                    : reports.overview.netBalance < 0
+                      ? 'text-green-600'
+                      : 'text-gray-600'
+                }`}
+              >
+                {reports.overview.netBalance.toFixed(2)} ₺
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-4">
+            <div className="bg-white rounded-lg p-3 shadow-sm">
+              <div className="text-xs text-gray-600 mb-1">Borçlu Üye</div>
+              <div className="text-lg font-semibold text-red-600">
+                {reports.overview.debtors}
+              </div>
+            </div>
+            <div className="bg-white rounded-lg p-3 shadow-sm">
+              <div className="text-xs text-gray-600 mb-1">Dengede</div>
+              <div className="text-lg font-semibold text-gray-600">
+                {reports.overview.balanced}
+              </div>
+            </div>
+            <div className="bg-white rounded-lg p-3 shadow-sm">
+              <div className="text-xs text-gray-600 mb-1">Fazla Ödeme</div>
+              <div className="text-lg font-semibold text-green-600">
+                {reports.overview.creditors}
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      <Card className="p-4">
+        <h2 className="mb-2 font-medium">Toplu Borçlandırma</h2>
+        <p className="mb-3 text-sm text-muted-foreground">
+          Üyeleri seçerek toplu borçlandırma yapabilirsiniz
+        </p>
+        <Button
+          onClick={() => setShowBulkDebitModal(true)}
+          size="sm"
+          disabled={!canWrite}
+        >
+          Toplu Borçlandırma Aç
+        </Button>
+        {!canWrite && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Yalnızca yöneticiler kullanabilir
+          </p>
         )}
-        <Separator className="my-3" />
-        <ul className="text-sm">
-          {plans.map((p) => (
-            <li key={p.id}>
-              {p.name} — {p.amount} {p.currency} ({p.frequency})
-            </li>
-          ))}
-        </ul>
       </Card>
 
-      <Card className="p-4">
-        <h2 className="mb-2 font-medium">Dönem Oluştur</h2>
-        {canWrite ? (
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault()
-              const form = new FormData(e.currentTarget)
-              await createPeriod(form)
-            }}
-            className="grid grid-cols-6 gap-2"
-          >
-            <select className="col-span-2" name="planId">
-              {plans.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            <Input name="pname" placeholder="Dönem adı (ör. 2025/01)" />
-            <Input name="startDate" type="date" />
-            <Input name="endDate" type="date" />
-            <Input name="dueDate" type="date" />
-            <div className="col-span-6">
-              <Button type="submit" size="sm">
-                Ekle
-              </Button>
-            </div>
-          </form>
-        ) : null}
-        <Separator className="my-3" />
-        <ul className="text-sm">
-          {periods.map((p) => (
-            <li key={p.id}>
-              {p.name} — {new Date(p.startDate).toLocaleDateString()} /{' '}
-              {new Date(p.endDate).toLocaleDateString()}
-            </li>
-          ))}
-        </ul>
-      </Card>
-
-      <Card className="p-4">
-        <h2 className="mb-2 font-medium">Ödeme Kaydet</h2>
-        {canWrite ? (
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault()
-              const form = new FormData(e.currentTarget)
-              await createPayment(form)
-            }}
-            className="grid grid-cols-6 gap-2"
-          >
-            <Input name="memberId" placeholder="Üye ID (opsiyonel)" />
-            <select className="col-span-2" name="payPlanId">
-              <option value="">Plan yok</option>
-              {plans.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            <select className="col-span-2" name="payPeriodId">
-              <option value="">Dönem yok</option>
-              {periods.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            <Input
-              name="payAmount"
-              type="number"
-              step="0.01"
-              placeholder="Tutar"
-            />
-            <Input name="payCurrency" defaultValue="TRY" />
-            <select name="paymentMethod" defaultValue="CASH">
-              <option value="CASH">Nakit</option>
-              <option value="BANK_TRANSFER">Havale/EFT</option>
-              <option value="CREDIT_CARD">Kredi Kartı</option>
-              <option value="OTHER">Diğer</option>
-            </select>
-            <Input name="receiptNo" placeholder="Makbuz No (opsiyonel)" />
-            <Input
-              name="note"
-              placeholder="Not (opsiyonel)"
-              className="col-span-3"
-            />
-            <div className="col-span-6">
-              <Button type="submit" size="sm">
-                Kaydet
-              </Button>
-            </div>
-          </form>
-        ) : null}
-        <Separator className="my-3" />
-        <ul className="text-sm">
-          {tx.map((t) => (
-            <li key={t.id} className="flex items-center gap-2">
-              <span className="grow">
-                {new Date(t.txnDate).toLocaleString()} — {t.type} — {t.amount}{' '}
-                {t.currency} {t.receiptNo ? `(Makbuz: ${t.receiptNo})` : ''}
-              </span>
-              {t.type === 'PAYMENT' && (
-                <a
-                  href={`/api/${org}/finance/receipt?id=${t.id}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-sm border px-2 py-1 text-xs hover:bg-accent"
+      {/* Pending Bulk Debits */}
+      {bulkDebits.filter((bd: any) => bd.status === 'PENDING').length > 0 && (
+        <Card className="p-6 bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-amber-900">
+              ⚡ Bekleyen Toplu Borçlandırmalar
+            </h2>
+            <Button
+              onClick={loadBulkDebits}
+              size="sm"
+              variant="outline"
+              className="border-amber-300"
+            >
+              🔄 Yenile
+            </Button>
+          </div>
+          <div className="space-y-3">
+            {bulkDebits
+              .filter((bd: any) => bd.status === 'PENDING')
+              .map((bd: any) => (
+                <div
+                  key={bd.id}
+                  className="bg-white rounded-lg p-4 shadow-sm border border-amber-200"
                 >
-                  Makbuz
-                </a>
-              )}
-            </li>
-          ))}
-        </ul>
-      </Card>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-semibold text-gray-900">
+                          {bd.name}
+                        </h3>
+                        <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 rounded">
+                          {bd.status === 'PENDING' ? 'BEKLEMEDE' : bd.status}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <span className="text-gray-600">Tip:</span>{' '}
+                          <span className="font-medium">
+                            {bd.debitType === 'AIDAT' ? 'Aidat' : 'Tarihli'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Tutar:</span>{' '}
+                          <span className="font-medium">
+                            {Number(bd.amount).toFixed(2)} {bd.currency}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Üye Sayısı:</span>{' '}
+                          <span className="font-medium">
+                            {bd.members?.length || 0}
+                          </span>
+                        </div>
+                        {bd.year && (
+                          <div>
+                            <span className="text-gray-600">Yıl:</span>{' '}
+                            <span className="font-medium">{bd.year}</span>
+                          </div>
+                        )}
+                        {bd.scheduledDate && (
+                          <div>
+                            <span className="text-gray-600">
+                              Planlanan Tarih:
+                            </span>{' '}
+                            <span className="font-medium">
+                              {new Date(bd.scheduledDate).toLocaleDateString(
+                                'tr-TR'
+                              )}
+                            </span>
+                          </div>
+                        )}
+                        <div>
+                          <span className="text-gray-600">Oluşturma:</span>{' '}
+                          <span className="font-medium">
+                            {new Date(bd.createdAt).toLocaleDateString('tr-TR')}
+                          </span>
+                        </div>
+                      </div>
+                      {bd.members && bd.members.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <div className="text-xs text-gray-600 mb-1">
+                            Seçilen üyeler:
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {bd.members.slice(0, 10).map((m: any) => (
+                              <span
+                                key={m.id}
+                                className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-700"
+                              >
+                                {m.member?.firstName} {m.member?.lastName}
+                              </span>
+                            ))}
+                            {bd.members.length > 10 && (
+                              <span className="text-xs text-gray-500">
+                                +{bd.members.length - 10} daha...
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="ml-4">
+                      {canWrite && (
+                        <Button
+                          onClick={() => processBulkDebit(bd.id)}
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700"
+                          disabled={isProcessingBulkDebit === bd.id}
+                        >
+                          {isProcessingBulkDebit === bd.id
+                            ? '⏳ İşleniyor...'
+                            : '✓ Şimdi Çalıştır'}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+          <div className="mt-4 p-3 bg-amber-100 border border-amber-300 rounded-lg">
+            <p className="text-sm text-amber-900">
+              <strong>💡 Not:</strong> Yukarıdaki bekleyen borçlandırmaları
+              "Şimdi Çalıştır" butonuna tıklayarak işlemeniz gerekiyor. Bu işlem
+              seçilen tüm üyelere borç kaydı oluşturacaktır.
+            </p>
+          </div>
+        </Card>
+      )}
 
       <Card className="p-6">
         <div className="mb-4 flex items-center justify-between">
@@ -344,14 +439,19 @@ export default function FinanceClient({
                         }`}
                       >
                         <td className="py-3 pr-4">
-                          <div className="font-medium text-gray-900">
-                            {b.name ?? b.memberId}
-                          </div>
-                          {b.name && (
-                            <div className="text-xs text-gray-500">
-                              ID: {b.memberId}
+                          <Link
+                            href={`/${org}/members/${b.memberId}`}
+                            className="block hover:underline"
+                          >
+                            <div className="font-medium text-gray-900">
+                              {b.name ?? b.memberId}
                             </div>
-                          )}
+                            {b.name && (
+                              <div className="text-xs text-gray-500">
+                                ID: {b.memberId}
+                              </div>
+                            )}
+                          </Link>
                         </td>
                         <td className="py-3 text-right font-mono text-sm text-red-600">
                           {b.charges.toFixed(2)} ₺
@@ -545,14 +645,19 @@ export default function FinanceClient({
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="font-medium text-gray-900">
-                            {b.name ?? b.memberId}
-                          </div>
-                          {b.name && (
-                            <div className="text-xs text-gray-500">
-                              ID: {b.memberId}
+                          <Link
+                            href={`/${org}/members/${b.memberId}`}
+                            className="block hover:underline"
+                          >
+                            <div className="font-medium text-gray-900">
+                              {b.name ?? b.memberId}
                             </div>
-                          )}
+                            {b.name && (
+                              <div className="text-xs text-gray-500">
+                                ID: {b.memberId}
+                              </div>
+                            )}
+                          </Link>
                         </td>
                         <td className="py-3 px-4 text-right font-mono text-sm text-gray-700">
                           {charges.toFixed(2)} ₺
@@ -592,33 +697,15 @@ export default function FinanceClient({
         )}
       </Card>
 
-      <Card className="p-4">
-        <h2 className="mb-2 font-medium">Toplu Borçlandırma</h2>
-        <p className="mb-3 text-sm text-muted-foreground">
-          Üyeleri seçerek toplu borçlandırma yapabilirsiniz
-        </p>
-        <Button
-          onClick={() => setShowBulkDebitModal(true)}
-          size="sm"
-          disabled={!canWrite}
-        >
-          Toplu Borçlandırma Aç
-        </Button>
-        {!canWrite && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Yalnızca yöneticiler kullanabilir
-          </p>
-        )}
-      </Card>
-
       {showBulkDebitModal && (
         <BulkDebitModal
           org={org}
           onClose={() => setShowBulkDebitModal(false)}
           onSuccess={() => {
+            loadBulkDebits()
             refreshBalances()
-            // Refresh transactions if needed
-            window.location.reload()
+            loadReports()
+            setShowBulkDebitModal(false)
           }}
         />
       )}

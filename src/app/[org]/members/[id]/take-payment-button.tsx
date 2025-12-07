@@ -24,16 +24,7 @@ export const TakePaymentButton: React.FC<Props> = ({
   >('CASH')
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
-  const [plans, setPlans] = useState<
-    Array<{ id: string; name: string; amount: string; isActive?: boolean }>
-  >([])
-  const [periods, setPeriods] = useState<
-    Array<{ id: string; name: string; planId: string }>
-  >([])
-  const [planId, setPlanId] = useState('')
-  const [periodId, setPeriodId] = useState('')
   const [receiptNo, setReceiptNo] = useState('')
-  const [reference, setReference] = useState('')
   const [isDonation, setIsDonation] = useState(false)
   const { add } = useToast()
 
@@ -41,10 +32,6 @@ export const TakePaymentButton: React.FC<Props> = ({
     const val = parseFloat(amount.replace(',', '.'))
     if (isNaN(val) || val <= 0) {
       add({ variant: 'error', title: 'Tutar geçersiz' })
-      return
-    }
-    if ((planId && !periodId) || (!planId && periodId)) {
-      add({ variant: 'error', title: 'Plan ve dönem birlikte seçilmeli' })
       return
     }
     setSaving(true)
@@ -59,10 +46,8 @@ export const TakePaymentButton: React.FC<Props> = ({
           currency: 'TRY',
           paymentMethod: method,
           note: note || undefined,
-          planId: planId || undefined,
-          periodId: periodId || undefined,
           receiptNo: receiptNo || undefined,
-          reference: (isDonation ? 'BAGIS ' : '') + (reference || ''),
+          reference: isDonation ? 'BAGIS' : undefined,
         }),
       })
       if (res.ok) {
@@ -70,10 +55,7 @@ export const TakePaymentButton: React.FC<Props> = ({
         setOpen(false)
         setAmount('')
         setNote('')
-        setPlanId('')
-        setPeriodId('')
         setReceiptNo('')
-        setReference('')
         setIsDonation(false)
         if (refreshPath) router.refresh()
       } else {
@@ -91,62 +73,18 @@ export const TakePaymentButton: React.FC<Props> = ({
     }
   }
 
-  // Fetch plans when modal opens
-  useEffect(() => {
-    if (!open) return
-    let cancelled = false
-    async function load() {
-      try {
-        const pRes = await fetch(`/api/${org}/finance/plans?take=100`, {
-          cache: 'no-store',
-        })
-        if (pRes.ok) {
-          const data = await pRes.json()
-          if (!cancelled) setPlans(data.items || [])
-        }
-      } catch {}
-    }
-    load()
-    return () => {
-      cancelled = true
-    }
-  }, [open, org])
-
-  // Fetch periods when plan changes
-  useEffect(() => {
-    if (!open || !planId) {
-      setPeriods([])
-      setPeriodId('')
-      return
-    }
-    let cancelled = false
-    async function load() {
-      try {
-        const r = await fetch(`/api/${org}/finance/periods?planId=${planId}`, {
-          cache: 'no-store',
-        })
-        if (r.ok) {
-          const data = await r.json()
-          if (!cancelled) setPeriods(data.items || [])
-        }
-      } catch {}
-    }
-    load()
-    return () => {
-      cancelled = true
-    }
-  }, [planId, open, org])
-
   return (
     <>
       <Button size="sm" onClick={() => setOpen(true)}>
-        Borç Ödemesi Al
+        Ödeme Al
       </Button>
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-md rounded border bg-card shadow-lg">
-            <div className="border-b px-4 py-2 font-medium flex items-center justify-between">
-              <span>Ödeme Al</span>
+            <div className="border-b px-4 py-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-foreground">
+                Ödeme Al
+              </h2>
               <button
                 className="text-xs text-muted-foreground hover:text-foreground"
                 onClick={() => setOpen(false)}
@@ -168,49 +106,6 @@ export const TakePaymentButton: React.FC<Props> = ({
                   placeholder="0,00"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium mb-1 text-foreground">
-                    Plan
-                  </label>
-                  <select
-                    className="w-full rounded border px-3 py-2 bg-background text-foreground"
-                    value={planId}
-                    onChange={(e) => setPlanId(e.target.value)}
-                  >
-                    <option value="">(Seçim yok)</option>
-                    {plans.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1 text-foreground">
-                    Dönem
-                  </label>
-                  <select
-                    className="w-full rounded border px-3 py-2 bg-background text-foreground"
-                    value={periodId}
-                    onChange={(e) => setPeriodId(e.target.value)}
-                    disabled={!planId || periods.length === 0}
-                  >
-                    <option value="">
-                      {planId
-                        ? periods.length
-                          ? '(Seçiniz)'
-                          : 'Dönem yok'
-                        : 'Önce plan seçin'}
-                    </option>
-                    {periods.map((pr) => (
-                      <option key={pr.id} value={pr.id}>
-                        {pr.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
               <div>
                 <label className="block text-xs font-medium mb-1 text-foreground">
                   Ödeme Yöntemi
@@ -226,28 +121,15 @@ export const TakePaymentButton: React.FC<Props> = ({
                   <option value="OTHER">Diğer</option>
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium mb-1 text-foreground">
-                    Makbuz No
-                  </label>
-                  <input
-                    className="w-full rounded border px-3 py-2 bg-background text-foreground"
-                    value={receiptNo}
-                    onChange={(e) => setReceiptNo(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1 text-foreground">
-                    Referans
-                  </label>
-                  <input
-                    className="w-full rounded border px-3 py-2 bg-background text-foreground"
-                    value={reference}
-                    onChange={(e) => setReference(e.target.value)}
-                    placeholder="örn: BAGIS"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-medium mb-1 text-foreground">
+                  Makbuz No
+                </label>
+                <input
+                  className="w-full rounded border px-3 py-2 bg-background text-foreground"
+                  value={receiptNo}
+                  onChange={(e) => setReceiptNo(e.target.value)}
+                />
               </div>
               <div className="flex items-center gap-2">
                 <input

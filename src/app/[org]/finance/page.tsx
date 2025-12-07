@@ -59,9 +59,18 @@ export default async function FinancePage({ params }: any) {
         <h1 className="text-2xl font-semibold leading-none tracking-tight">
           Üyelik Aidat / Finans
         </h1>
-        <LinkButton href={`/${org}/members`} size="sm" variant="outline">
-          Üyelere Dön
-        </LinkButton>
+        <div className="flex gap-2">
+          <LinkButton
+            href={`/${org}/finance/kasa`}
+            size="default"
+            className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 px-6"
+          >
+            💰 Kasa
+          </LinkButton>
+          <LinkButton href={`/${org}/members`} size="sm" variant="outline">
+            Üyelere Dön
+          </LinkButton>
+        </div>
       </div>
       <FinanceClient org={org} canWrite={canWrite} initial={initial} />
     </main>

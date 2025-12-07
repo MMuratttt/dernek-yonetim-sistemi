@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import { useState } from 'react'
+import { use, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -8,11 +8,14 @@ import { Button } from '@/components/ui/button'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { useToast } from '@/components/ui/toast'
 
-export default function NewMeetingPage({ params }: any) {
+export default function NewMeetingPage({ params: paramsPromise }: any) {
+  const params = use(paramsPromise)
   const router = useRouter()
   const [title, setTitle] = useState('')
   const [scheduledAt, setScheduledAt] = useState('')
-  const [type, setType] = useState<'GENERAL_ASSEMBLY'|'BOARD'|'COMMISSION'|'OTHER'>('OTHER')
+  const [type, setType] = useState<
+    'GENERAL_ASSEMBLY' | 'BOARD' | 'COMMISSION' | 'OTHER'
+  >('OTHER')
   const [loading, setLoading] = useState(false)
   const { add } = useToast()
 
@@ -22,7 +25,7 @@ export default function NewMeetingPage({ params }: any) {
       const res = await fetch(`/api/${params.org}/meetings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, scheduledAt, type })
+        body: JSON.stringify({ title, scheduledAt, type }),
       })
       if (res.ok) {
         const { item } = await res.json()
@@ -31,14 +34,25 @@ export default function NewMeetingPage({ params }: any) {
         router.refresh()
       } else {
         const d = await res.json().catch(() => null)
-        add({ variant: 'error', title: 'Oluşturma hatası', description: d?.error })
+        add({
+          variant: 'error',
+          title: 'Oluşturma hatası',
+          description: d?.error,
+        })
       }
-    } finally { setLoading(false) }
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <main className="max-w-xl p-6">
-      <Breadcrumbs items={[{ label: 'Toplantılar', href: `/${params.org}/meetings` }, { label: 'Yeni' }]} />
+      <Breadcrumbs
+        items={[
+          { label: 'Toplantılar', href: `/${params.org}/meetings` },
+          { label: 'Yeni' },
+        ]}
+      />
       <h1 className="text-2xl font-semibold mb-4">Yeni Toplantı</h1>
       <div className="space-y-3">
         <div>
@@ -47,18 +61,30 @@ export default function NewMeetingPage({ params }: any) {
         </div>
         <div>
           <div className="text-sm mb-1">Tarih/Zaman</div>
-          <Input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />
+          <Input
+            type="datetime-local"
+            value={scheduledAt}
+            onChange={(e) => setScheduledAt(e.target.value)}
+          />
         </div>
         <div>
           <div className="text-sm mb-1">Tür</div>
-          <Select value={type} onChange={(e) => setType((e.target as HTMLSelectElement).value as any)} className="w-[220px]">
+          <Select
+            value={type}
+            onChange={(e) =>
+              setType((e.target as HTMLSelectElement).value as any)
+            }
+            className="w-[220px]"
+          >
             <option value="GENERAL_ASSEMBLY">Genel Kurul</option>
             <option value="BOARD">Kurul</option>
             <option value="COMMISSION">Komisyon</option>
             <option value="OTHER">Diğer</option>
           </Select>
         </div>
-  <Button onClick={create} disabled={loading}>{loading ? 'Oluşturuluyor…' : 'Oluştur'}</Button>
+        <Button onClick={create} disabled={loading}>
+          {loading ? 'Oluşturuluyor…' : 'Oluştur'}
+        </Button>
       </div>
     </main>
   )

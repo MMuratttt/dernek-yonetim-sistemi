@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -43,7 +43,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 export default function EditMemberPage(props: any) {
-  const { params } = props
+  const params = use(props.params)
   const router = useRouter()
   const {
     register,

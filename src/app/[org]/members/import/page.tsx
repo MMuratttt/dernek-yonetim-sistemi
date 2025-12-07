@@ -1,10 +1,11 @@
 import ImportMembersClient from './ImportMembersClient'
 
 // Clean wrapper page (all client logic is in ImportMembersClient.tsx)
-export default function ImportMembersPage({
-  params,
+export default async function ImportMembersPage({
+  params: paramsPromise,
 }: {
-  params: { org: string }
+  params: Promise<{ org: string }>
 }) {
+  const params = await paramsPromise
   return <ImportMembersClient org={params.org} />
 }

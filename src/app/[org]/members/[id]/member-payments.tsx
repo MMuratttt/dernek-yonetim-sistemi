@@ -4,6 +4,39 @@ import React, { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 
+function translateTransactionType(
+  type: string,
+  reference?: string | null
+): string {
+  const translations: Record<string, string> = {
+    CHARGE: 'Borç',
+    PAYMENT: 'Ödeme',
+    REFUND: 'İade',
+    ADJUSTMENT: 'Düzeltme',
+  }
+  const baseType = translations[type] || type
+  const isDonation =
+    reference?.toLowerCase().includes('bagis') ||
+    reference?.toLowerCase().includes('bağış') ||
+    reference?.toLowerCase().includes('donation')
+
+  if (type === 'PAYMENT' && isDonation) {
+    return 'Ödeme / Bağış'
+  }
+  return baseType
+}
+
+function translatePaymentMethod(method: string | null | undefined): string {
+  if (!method) return '-'
+  const translations: Record<string, string> = {
+    CASH: 'Nakit',
+    BANK_TRANSFER: 'Havale/EFT',
+    CREDIT_CARD: 'Kredi Kartı',
+    OTHER: 'Diğer',
+  }
+  return translations[method] || method
+}
+
 interface Txn {
   id: string
   type: 'CHARGE' | 'PAYMENT' | 'REFUND' | 'ADJUSTMENT'
@@ -11,11 +44,9 @@ interface Txn {
   currency: string
   txnDate: string
   paymentMethod?: string | null
-  planId?: string | null
-  periodId?: string | null
   receiptNo?: string | null
-  reference?: string | null
   note?: string | null
+  reference?: string | null
 }
 
 interface Props {
@@ -93,10 +124,7 @@ export const MemberPayments: React.FC<Props> = ({ org, memberId }) => {
                 <th className="px-2 py-1 border">Tür</th>
                 <th className="px-2 py-1 border">Tutar</th>
                 <th className="px-2 py-1 border">Yöntem</th>
-                <th className="px-2 py-1 border">Plan</th>
-                <th className="px-2 py-1 border">Dönem</th>
                 <th className="px-2 py-1 border">Makbuz</th>
-                <th className="px-2 py-1 border">Ref</th>
                 <th className="px-2 py-1 border">Not</th>
               </tr>
             </thead>
@@ -106,17 +134,18 @@ export const MemberPayments: React.FC<Props> = ({ org, memberId }) => {
                   <td className="px-2 py-1 border whitespace-nowrap">
                     {new Date(r.txnDate).toLocaleDateString('tr-TR')}
                   </td>
-                  <td className="px-2 py-1 border">{r.type}</td>
+                  <td className="px-2 py-1 border">
+                    {translateTransactionType(r.type, r.reference)}
+                  </td>
                   <td
                     className={`px-2 py-1 border font-mono ${String(r.type).startsWith('PAYMENT') || r.type === 'REFUND' ? 'text-red-600' : 'text-emerald-700'}`}
                   >
                     {fmtAmount(r)}
                   </td>
-                  <td className="px-2 py-1 border">{r.paymentMethod || '-'}</td>
-                  <td className="px-2 py-1 border">{r.planId ? '•' : '-'}</td>
-                  <td className="px-2 py-1 border">{r.periodId ? '•' : '-'}</td>
+                  <td className="px-2 py-1 border">
+                    {translatePaymentMethod(r.paymentMethod)}
+                  </td>
                   <td className="px-2 py-1 border">{r.receiptNo || '-'}</td>
-                  <td className="px-2 py-1 border">{r.reference || '-'}</td>
                   <td
                     className="px-2 py-1 border truncate max-w-[120px]"
                     title={r.note || ''}

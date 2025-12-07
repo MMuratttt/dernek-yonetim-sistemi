@@ -9,6 +9,15 @@ import { MemberPayments } from './member-payments'
 import { prisma } from '@/lib/prisma'
 import { ensureOrgAccessBySlug } from '@/lib/authz'
 
+function translateMemberStatus(status: string): string {
+  const translations: Record<string, string> = {
+    ACTIVE: 'Aktif',
+    PASSIVE: 'Pasif',
+    LEFT: 'Ayrıldı',
+  }
+  return translations[status] || status
+}
+
 export default async function MemberDetailPage({
   params,
 }: {
@@ -47,19 +56,20 @@ export default async function MemberDetailPage({
 
   for (const t of txns) {
     const amt = Number(t.amount)
+    const isDonation =
+      t.reference?.toLowerCase().includes('bagis') ||
+      t.reference?.toLowerCase().includes('bağış') ||
+      t.reference?.toLowerCase().includes('donation')
+
     switch (t.type) {
       case 'CHARGE':
         borc += amt
         break
       case 'PAYMENT':
-        odenen += amt
-        if (
-          !t.planId &&
-          (t.reference?.toLowerCase().includes('bagis') ||
-            t.reference?.toLowerCase().includes('bağış') ||
-            t.reference?.toLowerCase().includes('donation'))
-        ) {
+        if (!t.planId && isDonation) {
           bagis += amt
+        } else {
+          odenen += amt
         }
         break
       case 'REFUND':
@@ -179,42 +189,6 @@ export default async function MemberDetailPage({
             </div>
           </section>
           <section className="rounded border bg-card text-sm">
-            <header className="flex items-center justify-between border-b px-3 py-2 bg-amber-500/90 text-white">
-              <h2 className="font-medium">Aidat Bilgileri</h2>
-              <div className="flex gap-2">
-                <TakePaymentButton
-                  org={org}
-                  memberId={id}
-                  refreshPath={`/${org}/members/${id}`}
-                />
-              </div>
-            </header>
-            <div className="p-3">
-              {dues ? (
-                <div className="grid grid-cols-4 gap-y-2">
-                  <div className="text-muted-foreground col-span-1">Borç</div>
-                  <div className="col-span-3">{money(dues.borc)}</div>
-                  <div className="text-muted-foreground col-span-1">Ödenen</div>
-                  <div className="col-span-3">{money(dues.odenen)}</div>
-                  <div className={`text-muted-foreground col-span-1`}>
-                    Kalan
-                  </div>
-                  <div
-                    className={`col-span-3 ${dues.kalan < 0 ? 'text-green-600 font-semibold' : ''}`}
-                  >
-                    {money(dues.kalan)}
-                  </div>
-                  <div className="text-muted-foreground col-span-1">
-                    Yaptığı Bağış
-                  </div>
-                  <div className="col-span-3">{money(dues.bagis)}</div>
-                </div>
-              ) : (
-                <div className="text-muted-foreground">Aidat verisi yok</div>
-              )}
-            </div>
-          </section>
-          <section className="rounded border bg-card text-sm">
             <header className="flex items-center justify-between border-b px-3 py-2 bg-muted/40">
               <h2 className="font-medium">İletişim Bilgileri</h2>
               <div className="flex gap-2">
@@ -235,7 +209,9 @@ export default async function MemberDetailPage({
               <div className="text-muted-foreground">Meslek</div>
               <div className="col-span-3">{item.occupation || '-'}</div>
               <div className="text-muted-foreground">Üye Durumu</div>
-              <div className="col-span-3">{item.status}</div>
+              <div className="col-span-3">
+                {translateMemberStatus(item.status)}
+              </div>
             </div>
           </section>
           <section className="rounded border bg-card text-sm">
@@ -248,40 +224,6 @@ export default async function MemberDetailPage({
           </section>
         </div>
         <div className="space-y-6">
-          <section className="rounded border bg-card text-sm">
-            <header className="flex items-center justify-between border-b px-3 py-2 bg-muted/40">
-              <h2 className="font-medium">Üyelik Durumu</h2>
-            </header>
-            <div className="p-3 grid grid-cols-2 gap-y-2">
-              <div className="text-muted-foreground">Üye Durumu</div>
-              <div>{item.status}</div>
-              <div className="text-muted-foreground">Üye Grubu</div>
-              <div>-</div>
-              <div className="text-muted-foreground">Üye Görevi</div>
-              <div>-</div>
-              <div className="text-muted-foreground">Karar No</div>
-              <div>-</div>
-              <div className="text-muted-foreground">Karar Tarihi</div>
-              <div>-</div>
-            </div>
-          </section>
-          <section className="rounded border bg-card text-sm">
-            <header className="flex items-center justify-between border-b px-3 py-2 bg-muted/40">
-              <h2 className="font-medium">Çıkış Durumu</h2>
-            </header>
-            <div className="p-3 grid grid-cols-2 gap-y-2">
-              <div className="text-muted-foreground">Çıkış Karar No</div>
-              <div>-</div>
-              <div className="text-muted-foreground">Çıkış Tarihi</div>
-              <div>
-                {item.leftAt
-                  ? new Date(item.leftAt).toLocaleDateString('tr-TR')
-                  : '-'}
-              </div>
-              <div className="text-muted-foreground">Çıkış Nedeni</div>
-              <div>-</div>
-            </div>
-          </section>
           <section className="rounded border bg-card p-3 text-sm">
             <div className="text-muted-foreground mb-2">Fotoğraf</div>
             {item.photoUrl ? (
@@ -293,6 +235,87 @@ export default async function MemberDetailPage({
             ) : (
               <div className="mt-2 text-muted-foreground">Fotoğraf yok</div>
             )}
+          </section>
+          <section className="rounded border bg-card text-sm">
+            <header className="flex items-center justify-between border-b px-3 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white">
+              <h2 className="font-medium flex items-center gap-2">
+                💰 Aidat Bilgileri
+              </h2>
+              <div className="flex gap-2">
+                <TakePaymentButton
+                  org={org}
+                  memberId={id}
+                  refreshPath={`/${org}/members/${id}`}
+                />
+              </div>
+            </header>
+            <div className="p-4">
+              {dues ? (
+                <div className="space-y-4">
+                  {/* Balance Summary Card */}
+                  <div
+                    className={`rounded-lg p-4 ${dues.kalan > 0 ? 'bg-red-50 border border-red-200' : dues.kalan < 0 ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200'}`}
+                  >
+                    <div className="text-xs text-gray-600 mb-1">
+                      Güncel Bakiye
+                    </div>
+                    <div
+                      className={`text-3xl font-bold ${dues.kalan > 0 ? 'text-red-600' : dues.kalan < 0 ? 'text-green-600' : 'text-gray-600'}`}
+                    >
+                      {money(dues.kalan)} ₺
+                    </div>
+                    <div className="text-sm mt-2">
+                      {dues.kalan > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-red-700">
+                          💳 Borçlu
+                        </span>
+                      ) : dues.kalan < 0 ? (
+                        <span className="inline-flex items-center gap-1 text-green-700">
+                          ✅ Fazla Ödeme ({money(Math.abs(dues.kalan))} ₺)
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-gray-700">
+                          ⚖️ Dengede
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Detailed Breakdown */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-red-50 rounded-lg p-3 border border-red-100">
+                      <div className="text-xs text-gray-600 mb-1">
+                        Toplam Borç
+                      </div>
+                      <div className="text-lg font-semibold text-red-600">
+                        {money(dues.borc)} ₺
+                      </div>
+                    </div>
+                    <div className="bg-green-50 rounded-lg p-3 border border-green-100">
+                      <div className="text-xs text-gray-600 mb-1">
+                        Toplam Ödeme
+                      </div>
+                      <div className="text-lg font-semibold text-green-600">
+                        {money(dues.odenen)} ₺
+                      </div>
+                    </div>
+                  </div>
+
+                  {dues.bagis > 0 && (
+                    <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                      <div className="text-xs text-gray-600 mb-1">
+                        💝 Yaptığı Bağış
+                      </div>
+                      <div className="text-lg font-semibold text-blue-600">
+                        {money(dues.bagis)} ₺
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-muted-foreground">Aidat verisi yok</div>
+              )}
+            </div>
           </section>
         </div>
       </div>

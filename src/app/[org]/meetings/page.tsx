@@ -7,7 +7,20 @@ import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import MeetingsClient from './MeetingsClient'
 
-export default async function MeetingsPage({ params, searchParams }: { params: { org: string }, searchParams: Promise<{ q?: string; type?: string; status?: string; from?: string; to?: string }> }) {
+export default async function MeetingsPage({
+  params: paramsPromise,
+  searchParams,
+}: {
+  params: Promise<{ org: string }>
+  searchParams: Promise<{
+    q?: string
+    type?: string
+    status?: string
+    from?: string
+    to?: string
+  }>
+}) {
+  const params = await paramsPromise
   const session = await getServerSession(authOptions)
   if (!session) {
     const { redirect } = await import('next/navigation')
@@ -16,7 +29,10 @@ export default async function MeetingsPage({ params, searchParams }: { params: {
 
   async function getRole() {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/api/${params.org}/me`, { cache: 'no-store' })
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/api/${params.org}/me`,
+        { cache: 'no-store' }
+      )
       if (!res.ok) return null as any
       const data = await res.json()
       return data.role as 'SUPERADMIN' | 'ADMIN' | 'STAFF' | 'MEMBER'
@@ -51,18 +67,39 @@ export default async function MeetingsPage({ params, searchParams }: { params: {
 
   return (
     <main>
-      <Breadcrumbs items={[{ label: 'Toplantılar', href: `/${params.org}/meetings` }]} />
+      <Breadcrumbs
+        items={[{ label: 'Toplantılar', href: `/${params.org}/meetings` }]}
+      />
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold leading-none tracking-tight">Toplantılar</h1>
+        <h1 className="text-2xl font-semibold leading-none tracking-tight">
+          Toplantılar
+        </h1>
         <div className="flex gap-2">
-          <LinkButton href={`/${params.org}/members`} size="sm" variant="outline">Üyelere Dön</LinkButton>
+          <LinkButton
+            href={`/${params.org}/members`}
+            size="sm"
+            variant="outline"
+          >
+            Üyelere Dön
+          </LinkButton>
           {canWrite && (
-            <LinkButton href={`/${params.org}/meetings/new`} size="sm">Yeni Toplantı</LinkButton>
+            <LinkButton href={`/${params.org}/meetings/new`} size="sm">
+              Yeni Toplantı
+            </LinkButton>
           )}
         </div>
       </div>
-      <form className="mb-4 grid gap-2 sm:grid-cols-5" role="search" aria-label="Toplantı arama/filtre">
-        <Input name="q" defaultValue={sp.q ?? ''} placeholder="Başlık ara" className="sm:col-span-2" />
+      <form
+        className="mb-4 grid gap-2 sm:grid-cols-5"
+        role="search"
+        aria-label="Toplantı arama/filtre"
+      >
+        <Input
+          name="q"
+          defaultValue={sp.q ?? ''}
+          placeholder="Başlık ara"
+          className="sm:col-span-2"
+        />
         <Select name="type" defaultValue={sp.type ?? ''}>
           <option value="">Tüm türler</option>
           <option value="GENERAL_ASSEMBLY">Genel Kurul</option>
@@ -77,15 +114,39 @@ export default async function MeetingsPage({ params, searchParams }: { params: {
           <option value="CANCELLED">İptal</option>
         </Select>
         <div className="flex items-center gap-2">
-          <Input type="date" name="from" defaultValue={sp.from ?? ''} title="Başlangıç" className="w-[150px]" />
-          <Input type="date" name="to" defaultValue={sp.to ?? ''} title="Bitiş" className="w-[150px]" />
+          <Input
+            type="date"
+            name="from"
+            defaultValue={sp.from ?? ''}
+            title="Başlangıç"
+            className="w-[150px]"
+          />
+          <Input
+            type="date"
+            name="to"
+            defaultValue={sp.to ?? ''}
+            title="Bitiş"
+            className="w-[150px]"
+          />
         </div>
         <div className="flex items-center gap-2 sm:col-span-5">
-          <Button type="submit" variant="outline">Filtrele</Button>
-          <LinkButton href={`/${params.org}/meetings`} size="sm" variant="outline">Sıfırla</LinkButton>
+          <Button type="submit" variant="outline">
+            Filtrele
+          </Button>
+          <LinkButton
+            href={`/${params.org}/meetings`}
+            size="sm"
+            variant="outline"
+          >
+            Sıfırla
+          </LinkButton>
         </div>
       </form>
-      <MeetingsClient org={params.org} canWrite={canWrite} initialItems={meetings} />
+      <MeetingsClient
+        org={params.org}
+        canWrite={canWrite}
+        initialItems={meetings}
+      />
     </main>
   )
 }

@@ -157,21 +157,23 @@ export default function BulkDebitModal({
                       </thead>
                       <tbody>
                         {members.map((m) => (
-                          <tr
-                            key={m.id}
-                            className="border-b hover:bg-accent cursor-pointer"
-                            onClick={() => toggle(m.id)}
-                          >
+                          <tr key={m.id} className="border-b hover:bg-accent">
                             <td className="p-2">
                               <Checkbox
                                 checked={selected.includes(m.id)}
                                 onChange={() => toggle(m.id)}
                               />
                             </td>
-                            <td className="p-2">
+                            <td
+                              className="p-2 cursor-pointer"
+                              onClick={() => toggle(m.id)}
+                            >
                               {m.firstName} {m.lastName}
                             </td>
-                            <td className="p-2 text-sm text-muted-foreground">
+                            <td
+                              className="p-2 text-sm text-muted-foreground cursor-pointer"
+                              onClick={() => toggle(m.id)}
+                            >
                               {m.phone || '-'}
                             </td>
                           </tr>
@@ -213,7 +215,7 @@ export default function BulkDebitModal({
                           onChange={(e) => setDebitType(e.target.value as any)}
                         />
                         <span className="text-sm">
-                          Yıllık (Nın ilk gününe göre)
+                          Yıllık (Seçilen yılın ilk gününe göre)
                         </span>
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer">

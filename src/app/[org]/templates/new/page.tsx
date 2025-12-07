@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input'
 import { TemplatePreviewModal } from '../../../../components/TemplatePreviewModal'
 import { useRouter } from 'next/navigation'
 
-export default function NewTemplatePage({ params }: any) {
+export default function NewTemplatePage({ params: paramsPromise }: any) {
+  const params = React.use(paramsPromise)
   const router = useRouter()
   const [name, setName] = React.useState('Örnek Şablon')
   const [description, setDescription] = React.useState('')
@@ -77,13 +78,17 @@ export default function NewTemplatePage({ params }: any) {
 
   return (
     <div className="p-4 space-y-3">
-      <Breadcrumbs items={[
-        { label: 'Şablonlar', href: `/${params.org}/templates` },
-        { label: 'Yeni', href: `/${params.org}/templates/new` },
-      ]} />
+      <Breadcrumbs
+        items={[
+          { label: 'Şablonlar', href: `/${params.org}/templates` },
+          { label: 'Yeni', href: `/${params.org}/templates/new` },
+        ]}
+      />
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Yeni Şablon</h1>
-        <Button onClick={previewInModal} variant="outline" size="sm">Önizleme</Button>
+        <Button onClick={previewInModal} variant="outline" size="sm">
+          Önizleme
+        </Button>
       </div>
       {error && <div className="text-red-600 text-sm">{error}</div>}
       <label className="block">
@@ -92,29 +97,58 @@ export default function NewTemplatePage({ params }: any) {
       </label>
       <label className="block">
         <div className="text-sm mb-1">Açıklama</div>
-        <Input value={description} onChange={(e) => setDescription(e.target.value)} />
+        <Input
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
       </label>
       <div className="grid gap-3 md:grid-cols-[1fr_300px]">
         <label className="block">
-          <div className="text-sm mb-1">HTML (Mustache değişkenleri desteklenir)</div>
-          <textarea value={content} onChange={(e) => setContent(e.target.value)} className="border-input bg-background text-foreground rounded-md border px-2 py-1 w-full h-80 font-mono" />
+          <div className="text-sm mb-1">
+            HTML (Mustache değişkenleri desteklenir)
+          </div>
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            className="border-input bg-background text-foreground rounded-md border px-2 py-1 w-full h-80 font-mono"
+          />
         </label>
         <div className="text-xs p-3 rounded border bg-neutral-50">
           <div className="font-medium mb-1">Kullanılabilir Değişkenler</div>
           <ul className="list-disc pl-5 space-y-0.5">
-            <li><code>{'{{title}}'}</code>, <code>{'{{date}}'}</code></li>
-            <li><code>{'{{org.name}}'}</code>, <code>{'{{org.slug}}'}</code></li>
-            <li><code>{'{{#rows}} ... {{/rows}}'}</code> — <code>{'{{no}}'}</code>, <code>{'{{ad}}'}</code>, <code>{'{{soyad}}'}</code>, <code>{'{{adsoyad}}'}</code>, <code>{'{{nationalId}}'}</code>, <code>{'{{phone}}'}</code>, <code>{'{{email}}'}</code></li>
-            <li><code>{'{{uye.firstName}}'}</code>, <code>{'{{uye.lastName}}'}</code></li>
+            <li>
+              <code>{'{{title}}'}</code>, <code>{'{{date}}'}</code>
+            </li>
+            <li>
+              <code>{'{{org.name}}'}</code>, <code>{'{{org.slug}}'}</code>
+            </li>
+            <li>
+              <code>{'{{#rows}} ... {{/rows}}'}</code> — <code>{'{{no}}'}</code>
+              , <code>{'{{ad}}'}</code>, <code>{'{{soyad}}'}</code>,{' '}
+              <code>{'{{adsoyad}}'}</code>, <code>{'{{nationalId}}'}</code>,{' '}
+              <code>{'{{phone}}'}</code>, <code>{'{{email}}'}</code>
+            </li>
+            <li>
+              <code>{'{{uye.firstName}}'}</code>,{' '}
+              <code>{'{{uye.lastName}}'}</code>
+            </li>
           </ul>
           <div className="mt-2 font-medium">Örnek Veri</div>
-          <pre className="text-[11px] whitespace-pre-wrap">{JSON.stringify(sampleData(), null, 2)}</pre>
+          <pre className="text-[11px] whitespace-pre-wrap">
+            {JSON.stringify(sampleData(), null, 2)}
+          </pre>
         </div>
       </div>
       <div className="flex gap-2">
-        <Button disabled={saving} onClick={save}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</Button>
+        <Button disabled={saving} onClick={save}>
+          {saving ? 'Kaydediliyor...' : 'Kaydet'}
+        </Button>
       </div>
-  <TemplatePreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} html={previewHtml} />
+      <TemplatePreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        html={previewHtml}
+      />
     </div>
   )
 }
