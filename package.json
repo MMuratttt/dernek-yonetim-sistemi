@@ -36,7 +36,7 @@
     "docx": "^9.2.3",
     "lucide-react": "latest",
     "mustache": "^4.2.0",
-    "next": "latest",
+    "next": "^15.1.4",
     "next-auth": "latest",
     "nodemailer": "^6.9.14",
     "twilio": "^5.4.4",
