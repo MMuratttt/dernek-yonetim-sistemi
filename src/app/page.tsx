@@ -60,7 +60,7 @@ export default async function HomePage() {
   ]
 
   return (
-    <main className="space-y-12 pb-12">
+    <div className="space-y-12">
       <Reveal>
         <Hero />
       </Reveal>
@@ -99,6 +99,6 @@ export default async function HomePage() {
       </Reveal>
 
       <Footer />
-    </main>
+    </div>
   )
 }

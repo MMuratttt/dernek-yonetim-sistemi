@@ -45,3 +45,23 @@ export async function deleteFileByUrl(url: string): Promise<void> {
     } catch {}
   }
 }
+
+/**
+ * Save an uploaded file from a form to a specific directory
+ */
+export async function saveUploadedFile(
+  file: File,
+  subdir: string = ''
+): Promise<string> {
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const ext = file.name.slice(file.name.lastIndexOf('.'))
+  const keyName = `${randomUUID()}${ext}`
+
+  const uploadDir = path.join(process.cwd(), 'public', 'uploads', subdir)
+  await ensureLocalUploadDir(uploadDir)
+  const filePath = path.join(uploadDir, keyName)
+  await fs.writeFile(filePath, buffer)
+
+  // Return relative path from public
+  return `uploads/${subdir}/${keyName}`.replace(/\/+/g, '/')
+}

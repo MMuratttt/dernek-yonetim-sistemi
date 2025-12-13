@@ -11,9 +11,19 @@ const CreateMeeting = z.object({
       typeof v === 'string' || v instanceof Date ? new Date(v as any) : v,
     z.date()
   ),
-  type: z.enum(['GENERAL_ASSEMBLY', 'BOARD', 'COMMISSION', 'OTHER']).optional(),
+  type: z
+    .enum([
+      'OLAGAN_GENEL_KURUL',
+      'OLAGANÜSTÜ_GENEL_KURUL',
+      'GENERAL_ASSEMBLY',
+      'BOARD',
+      'COMMISSION',
+      'OTHER',
+    ])
+    .optional(),
   location: z.string().optional(),
   description: z.string().optional(),
+  intervalYears: z.number().int().min(2).max(3).optional(),
 })
 
 export async function GET(
@@ -66,6 +76,44 @@ export async function POST(
   try {
     const json = await req.json()
     const data = CreateMeeting.parse(json)
+
+    // Validate interval for OLAGAN_GENEL_KURUL
+    if (data.type === 'OLAGAN_GENEL_KURUL') {
+      // Check if there's already an OLAGAN_GENEL_KURUL meeting
+      const existingOlaganMeeting = await (prisma as any).meeting.findFirst({
+        where: {
+          organizationId: access.org.id,
+          type: 'OLAGAN_GENEL_KURUL',
+        },
+        orderBy: { scheduledAt: 'desc' },
+      })
+
+      if (existingOlaganMeeting) {
+        // Validate that the new meeting respects the interval
+        const intervalYears = existingOlaganMeeting.intervalYears || 3
+        const minDate = new Date(existingOlaganMeeting.scheduledAt)
+        minDate.setFullYear(minDate.getFullYear() + intervalYears)
+
+        if (data.scheduledAt < minDate) {
+          return NextResponse.json(
+            {
+              error: `Olağan Genel Kurul Toplantısı ${intervalYears} yılda bir yapılabilir. Bir sonraki toplantı ${minDate.toLocaleDateString('tr-TR')} tarihinden önce olamaz.`,
+            },
+            { status: 400 }
+          )
+        }
+      } else if (!data.intervalYears) {
+        // First OLAGAN_GENEL_KURUL requires interval specification
+        return NextResponse.json(
+          {
+            error:
+              'İlk Olağan Genel Kurul Toplantısı için aralık (2 veya 3 yıl) belirtilmelidir.',
+          },
+          { status: 400 }
+        )
+      }
+    }
+
     const created = await (prisma as any).meeting.create({
       data: {
         organizationId: access.org.id,
@@ -74,6 +122,7 @@ export async function POST(
         type: data.type ?? 'OTHER',
         location: data.location,
         description: data.description,
+        intervalYears: data.intervalYears,
       },
     })
     return NextResponse.json({ item: created }, { status: 201 })

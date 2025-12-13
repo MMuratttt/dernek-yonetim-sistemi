@@ -29,13 +29,13 @@ export default async function MeetingsPage({
 
   async function getRole() {
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/api/${params.org}/me`,
-        { cache: 'no-store' }
+      const { ensureOrgAccessBySlug } = await import('@/lib/authz')
+      const access = await ensureOrgAccessBySlug(
+        session.user.id as string,
+        params.org
       )
-      if (!res.ok) return null as any
-      const data = await res.json()
-      return data.role as 'SUPERADMIN' | 'ADMIN' | 'STAFF' | 'MEMBER'
+      if (!access.allowed) return null as any
+      return access.role as 'SUPERADMIN' | 'ADMIN' | 'STAFF' | 'MEMBER'
     } catch {
       return null as any
     }
@@ -62,7 +62,7 @@ export default async function MeetingsPage({
   }
 
   const [role, meetings] = await Promise.all([getRole(), getMeetings()])
-  const canWrite = role === 'SUPERADMIN' || role === 'ADMIN' || role === 'STAFF'
+  const canWrite = role === 'SUPERADMIN' || role === 'ADMIN'
   const sp = await searchParams
 
   return (

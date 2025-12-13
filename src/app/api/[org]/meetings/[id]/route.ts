@@ -26,6 +26,7 @@ export async function GET(
       proxies: true,
       minutes: true,
       decisions: true,
+      documents: { orderBy: { uploadedAt: 'desc' } },
     },
   })
   if (!item)
