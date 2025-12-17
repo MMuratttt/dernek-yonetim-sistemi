@@ -184,18 +184,18 @@ export const BulkSmsModal: React.FC<Props> = ({
                 </label>
                 <p className="text-xs text-muted-foreground mt-1">
                   Mesajınızda{' '}
-                  <code className="bg-muted px-1 py-0.5 rounded">{`{{firstName}}`}</code>
+                  <code className="bg-muted px-1 py-0.5 rounded">{`{{ad}}`}</code>
                   ,{' '}
-                  <code className="bg-muted px-1 py-0.5 rounded">{`{{lastName}}`}</code>{' '}
+                  <code className="bg-muted px-1 py-0.5 rounded">{`{{soyad}}`}</code>{' '}
                   veya{' '}
-                  <code className="bg-muted px-1 py-0.5 rounded">{`{{fullName}}`}</code>{' '}
+                  <code className="bg-muted px-1 py-0.5 rounded">{`{{tam_ad}}`}</code>{' '}
                   kullanabilirsiniz.
                 </p>
                 {personalize && (
                   <div className="mt-2 p-2 bg-card rounded text-xs">
                     <strong>Örnek:</strong>
                     <p className="mt-1 text-muted-foreground">
-                      &quot;Sayın {`{{fullName}}`}, genel kurul
+                      &quot;Sayın {`{{tam_ad}}`}, genel kurul
                       toplantımız...&quot;
                     </p>
                   </div>

@@ -10,7 +10,7 @@ export const SMS_TEMPLATES: SmsTemplate[] = [
     id: 'aidat-hatirlatma',
     name: 'Aidat Ödeme Hatırlatma',
     description: 'Üyelere aidat borçlarını hatırlatmak için',
-    content: `Sayın {{fullName}},
+    content: `Sayın {{tam_ad}},
 
 Derneğimize olan aidatınızın ödeme zamanı gelmiştir. Aidat borcunuzun [TUTAR] TL olduğunu hatırlatmak isteriz.
 
@@ -22,7 +22,7 @@ Teşekkür ederiz.`,
     id: 'toplanti-daveti',
     name: 'Toplantı Daveti',
     description: 'Genel kurul veya toplantı davetleri için',
-    content: `Sayın {{fullName}},
+    content: `Sayın {{tam_ad}},
 
 Derneğimizin [TARİH] tarihinde saat [SAAT]'te yapılacak olan Olağan Genel Kurul Toplantısı'na katılımınızı rica ederiz.
 

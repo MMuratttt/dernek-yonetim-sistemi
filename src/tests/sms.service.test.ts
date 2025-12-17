@@ -92,7 +92,7 @@ describe('sendBulkSms', () => {
     await sendBulkSms({
       organizationId: 'org1',
       memberIds: ['m1'],
-      message: 'Merhaba {{firstName}} {{lastName}} - {{fullName}}',
+      message: 'Merhaba {{ad}} {{soyad}} - {{tam_ad}}',
       personalize: true,
     })
 

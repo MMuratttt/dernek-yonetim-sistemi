@@ -4,6 +4,7 @@ import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { LinkButton } from '@/components/ui/link-button'
 import { Suspense } from 'react'
 import { SendSmsButton } from './send-sms-button'
+import { SendEmailButton } from './send-email-button'
 import { TakePaymentButton } from './take-payment-button'
 import { MemberPayments } from './member-payments'
 import { prisma } from '@/lib/prisma'
@@ -193,6 +194,12 @@ export default async function MemberDetailPage({
               <h2 className="font-medium">İletişim Bilgileri</h2>
               <div className="flex gap-2">
                 <Suspense>
+                  <SendEmailButton
+                    org={org}
+                    memberId={id}
+                    email={item.email}
+                    memberName={`${item.firstName} ${item.lastName}`}
+                  />
                   <SendSmsButton org={org} memberId={id} phone={item.phone} />
                 </Suspense>
               </div>

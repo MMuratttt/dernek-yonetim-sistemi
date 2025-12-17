@@ -118,9 +118,9 @@ export async function sendBulkSms(opts: BulkOptions) {
     const fn = t.firstName || ''
     const ln = t.lastName || ''
     return msg
-      .replace(/{{\s*firstName\s*}}/gi, fn)
-      .replace(/{{\s*lastName\s*}}/gi, ln)
-      .replace(/{{\s*fullName\s*}}/gi, (fn + ' ' + ln).trim())
+      .replace(/{{\s*ad\s*}}/gi, fn)
+      .replace(/{{\s*soyad\s*}}/gi, ln)
+      .replace(/{{\s*tam_ad\s*}}/gi, (fn + ' ' + ln).trim())
   }
 
   for (let i = 0; i < targets.length; i += CHUNK) {
