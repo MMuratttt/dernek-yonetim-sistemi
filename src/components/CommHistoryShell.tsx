@@ -1,13 +1,25 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { CommHistoryList } from '@/components/CommHistoryList'
 import { Button } from '@/components/ui/button'
 
 type Channel = 'SMS' | 'EMAIL'
 
 export default function CommHistoryShell({ org }: { org: string }) {
-  const [channel, setChannel] = useState<Channel>('SMS')
+  const searchParams = useSearchParams()
+  const urlChannel = searchParams?.get('channel') as Channel | null
+  const urlCampaignId = searchParams?.get('campaignId')
+
+  const [channel, setChannel] = useState<Channel>(urlChannel || 'SMS')
+
+  // Update channel when URL changes
+  useEffect(() => {
+    if (urlChannel && (urlChannel === 'SMS' || urlChannel === 'EMAIL')) {
+      setChannel(urlChannel)
+    }
+  }, [urlChannel])
 
   return (
     <div className="space-y-4">
@@ -69,6 +81,7 @@ export default function CommHistoryShell({ org }: { org: string }) {
         org={org}
         channel={channel}
         onChannelChange={setChannel}
+        initialCampaignId={urlCampaignId || undefined}
       />
     </div>
   )

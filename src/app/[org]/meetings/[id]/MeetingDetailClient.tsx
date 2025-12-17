@@ -166,6 +166,11 @@ export default function MeetingDetailClient({
       status: 'PENDING' | 'SENT' | 'FAILED' | 'DELIVERED'
     }>
   >([])
+  // Communication campaigns linked to this meeting
+  const [smsCampaigns, setSmsCampaigns] = useState<any[]>([])
+  const [emailCampaigns, setEmailCampaigns] = useState<any[]>([])
+  const [campaignsLoading, setCampaignsLoading] = useState(false)
+
   async function loadInvites() {
     const res = await fetch(
       `/api/${org}/meetings/invites?meetingId=${encodeURIComponent(meetingId)}`,
@@ -174,16 +179,25 @@ export default function MeetingDetailClient({
     const data = res.ok ? await res.json() : { items: [] }
     setInvites(data.items || [])
   }
-  async function sendInvites() {
-    const res = await fetch(`/api/${org}/meetings/invites`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ meetingId }),
-    })
-    if (!res.ok)
-      return add({ variant: 'error', title: 'Davetiye gönderilemedi' })
-    add({ variant: 'success', title: 'Davetiye kuyruğa alındı' })
-    await loadInvites()
+
+  async function loadCampaigns() {
+    setCampaignsLoading(true)
+    try {
+      const res = await fetch(`/api/${org}/meetings/${meetingId}/campaigns`, {
+        cache: 'no-store',
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setSmsCampaigns(data.smsCampaigns || [])
+        setEmailCampaigns(data.emailCampaigns || [])
+      }
+    } finally {
+      setCampaignsLoading(false)
+    }
+  }
+
+  function goToCommHistory() {
+    router.push(`/${org}/sms`)
   }
 
   // Documents
@@ -265,7 +279,10 @@ export default function MeetingDetailClient({
 
   useEffect(() => {
     if (active === 'notes') loadAgendas()
-    if (active === 'invites') loadInvites()
+    if (active === 'invites') {
+      loadInvites()
+      loadCampaigns()
+    }
     if (active === 'documents') loadDocuments()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active])
@@ -426,29 +443,170 @@ export default function MeetingDetailClient({
       </TabPanel>
 
       <TabPanel active={active === 'invites'}>
-        <div className="mb-2 flex items-center gap-2">
-          <Button onClick={sendInvites} variant="outline">
-            Davetiyeleri Gönder
+        <div className="mb-4 flex items-center gap-2">
+          <Button onClick={goToCommHistory} variant="outline">
+            İletişim Bağla
           </Button>
         </div>
-        <ul className="divide-y rounded border">
-          {invites.map((i) => (
-            <li
-              key={i.id}
-              className="p-2 text-sm flex items-center justify-between"
-            >
-              <div>Üye: {i.memberId}</div>
-              <div className="text-xs text-muted-foreground">
-                Durum: {i.status}
-              </div>
-            </li>
-          ))}
-          {invites.length === 0 && (
-            <li className="p-2 text-sm text-muted-foreground">
-              Henüz davetiye yok.
-            </li>
+
+        {/* Communication History Section */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold">Bağlı İletişimler</h3>
+
+          {campaignsLoading ? (
+            <div className="text-sm text-muted-foreground flex items-center gap-2">
+              <Spinner size={16} /> Yükleniyor…
+            </div>
+          ) : smsCampaigns.length === 0 && emailCampaigns.length === 0 ? (
+            <div className="p-4 rounded border bg-muted/30 text-sm text-muted-foreground text-center">
+              Bu toplantıya henüz iletişim bağlanmamış.
+              <br />
+              <span className="text-xs">
+                İletişim Geçmişi sayfasından SMS veya E-posta kampanyalarını bu
+                toplantıya bağlayabilirsiniz.
+              </span>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {/* SMS Campaigns */}
+              {smsCampaigns.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                      />
+                    </svg>
+                    SMS
+                  </h4>
+                  <ul className="divide-y rounded border">
+                    {smsCampaigns.map((c) => (
+                      <li
+                        key={c.id}
+                        className="p-3 text-sm cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() =>
+                          router.push(
+                            `/${org}/sms?campaignId=${c.id}&channel=SMS`
+                          )
+                        }
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium">{c.name}</span>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full ${
+                              c.status === 'COMPLETED'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+                            }`}
+                          >
+                            {c.status === 'COMPLETED' ? 'Tamamlandı' : c.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mb-1">
+                          {c.message}
+                        </p>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span>Alıcı: {c.totalRecipients}</span>
+                          <span className="text-green-600">
+                            Gönderilen: {c.sentCount}
+                          </span>
+                          <span className="text-red-600">
+                            Başarısız: {c.failedCount}
+                          </span>
+                          <span>
+                            {new Date(c.createdAt).toLocaleDateString('tr-TR')}
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Email Campaigns */}
+              {emailCampaigns.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                    <svg
+                      className="w-4 h-4"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M3 8.5C3 7.67157 3.67157 7 4.5 7H19.5C20.3284 7 21 7.67157 21 8.5V15.5C21 16.3284 20.3284 17 19.5 17H4.5C3.67157 17 3 16.3284 3 15.5V8.5Z"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M21 8.5L12 13.5L3 8.5"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    E-posta
+                  </h4>
+                  <ul className="divide-y rounded border">
+                    {emailCampaigns.map((c) => (
+                      <li
+                        key={c.id}
+                        className="p-3 text-sm cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() =>
+                          router.push(
+                            `/${org}/sms?campaignId=${c.id}&channel=EMAIL`
+                          )
+                        }
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium">{c.name}</span>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full ${
+                              c.status === 'COMPLETED'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+                            }`}
+                          >
+                            {c.status === 'COMPLETED' ? 'Tamamlandı' : c.status}
+                          </span>
+                        </div>
+                        <p className="text-xs font-medium mb-1">
+                          Konu: {c.subject}
+                        </p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mb-1">
+                          {c.message}
+                        </p>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span>Alıcı: {c.totalRecipients}</span>
+                          <span className="text-green-600">
+                            Gönderilen: {c.sentCount}
+                          </span>
+                          <span className="text-red-600">
+                            Başarısız: {c.failedCount}
+                          </span>
+                          <span>
+                            {new Date(c.createdAt).toLocaleDateString('tr-TR')}
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           )}
-        </ul>
+        </div>
       </TabPanel>
 
       <TabPanel active={active === 'documents'}>

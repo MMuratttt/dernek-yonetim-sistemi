@@ -99,6 +99,13 @@ export async function GET(
           _count: {
             select: { messages: true },
           },
+          meeting: {
+            select: {
+              id: true,
+              title: true,
+              scheduledAt: true,
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip,

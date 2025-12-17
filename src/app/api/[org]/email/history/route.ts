@@ -80,7 +80,16 @@ export async function GET(
     const [campaigns, total] = await Promise.all([
       (prisma as any)['emailCampaign'].findMany({
         where: { organizationId: access.org.id },
-        include: { _count: { select: { messages: true } } },
+        include: {
+          _count: { select: { messages: true } },
+          meeting: {
+            select: {
+              id: true,
+              title: true,
+              scheduledAt: true,
+            },
+          },
+        },
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,

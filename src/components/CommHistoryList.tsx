@@ -7,6 +7,12 @@ import { useToast } from '@/components/ui/toast'
 
 type Channel = 'SMS' | 'EMAIL'
 
+interface MeetingOption {
+  id: string
+  title: string
+  scheduledAt: string
+}
+
 interface Campaign {
   id: string
   name: string
@@ -19,6 +25,8 @@ interface Campaign {
   createdAt: string
   startedAt: string | null
   completedAt: string | null
+  meetingId: string | null
+  meeting: MeetingOption | null
   _count: {
     messages: number
   }
@@ -61,12 +69,14 @@ interface Props {
   org: string
   channel?: Channel
   onChannelChange?: (c: Channel) => void
+  initialCampaignId?: string
 }
 
 export function CommHistoryList({
   org,
   channel: controlledChannel,
   onChannelChange,
+  initialCampaignId,
 }: Props) {
   const [internalChannel, setInternalChannel] = useState<Channel>('SMS')
   const channel = controlledChannel ?? internalChannel
@@ -83,10 +93,21 @@ export function CommHistoryList({
   const [total, setTotal] = useState(0)
   const [messagesPage, setMessagesPage] = useState(1)
   const [messagesTotal, setMessagesTotal] = useState(0)
+  const [meetings, setMeetings] = useState<MeetingOption[]>([])
+  const [assigningCampaignId, setAssigningCampaignId] = useState<string | null>(
+    null
+  )
+  const [pendingCampaignId, setPendingCampaignId] = useState<
+    string | undefined
+  >(initialCampaignId)
   const { add } = useToast()
   const router = useRouter()
 
   const limit = 20
+
+  useEffect(() => {
+    fetchMeetings()
+  }, [org])
 
   useEffect(() => {
     fetchCampaigns()
@@ -97,11 +118,67 @@ export function CommHistoryList({
     setEmailMessages([])
   }, [page, channel])
 
+  async function fetchMeetings() {
+    try {
+      const res = await fetch(`/api/${org}/meetings`)
+      if (res.ok) {
+        const data = await res.json()
+        setMeetings(data.items || [])
+      }
+    } catch (e) {
+      console.error('Error fetching meetings:', e)
+    }
+  }
+
+  async function assignMeeting(campaignId: string, meetingId: string | null) {
+    setAssigningCampaignId(campaignId)
+    try {
+      const res = await fetch(`/api/${org}/campaigns/${campaignId}/meeting`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meetingId, channel }),
+      })
+      if (res.ok) {
+        add({
+          variant: 'success',
+          title: meetingId
+            ? 'Toplantıya atandı'
+            : 'Toplantı bağlantısı kaldırıldı',
+        })
+        // Refresh campaigns to get updated meeting info
+        await fetchCampaigns()
+      } else {
+        const data = await res.json()
+        add({
+          variant: 'error',
+          title: 'Hata',
+          description: data.error || 'Atama yapılamadı',
+        })
+      }
+    } catch (e) {
+      console.error(e)
+      add({ variant: 'error', title: 'Hata', description: 'Ağ hatası' })
+    } finally {
+      setAssigningCampaignId(null)
+    }
+  }
+
   useEffect(() => {
     if (selectedCampaign) {
       fetchMessages()
     }
   }, [selectedCampaign, messagesPage, channel])
+
+  // Auto-select campaign if pendingCampaignId is set and campaigns are loaded
+  useEffect(() => {
+    if (pendingCampaignId && campaigns.length > 0 && !selectedCampaign) {
+      const campaign = campaigns.find((c) => c.id === pendingCampaignId)
+      if (campaign) {
+        setSelectedCampaign(campaign)
+        setPendingCampaignId(undefined)
+      }
+    }
+  }, [campaigns, pendingCampaignId, selectedCampaign])
 
   async function fetchCampaigns() {
     setLoading(true)
@@ -491,6 +568,9 @@ export function CommHistoryList({
                     Tarih
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-medium">
+                    Toplantı
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">
                     İşlem
                   </th>
                 </tr>
@@ -520,6 +600,28 @@ export function CommHistoryList({
                     </td>
                     <td className="px-4 py-3 text-sm">
                       {formatDate(campaign.createdAt)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <select
+                        className="text-sm border rounded px-2 py-1 bg-background min-w-[150px]"
+                        value={campaign.meetingId || ''}
+                        disabled={assigningCampaignId === campaign.id}
+                        onChange={(e) => {
+                          const value = e.target.value || null
+                          assignMeeting(campaign.id, value)
+                        }}
+                      >
+                        <option value="">Toplantı seçin...</option>
+                        {meetings.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.title} (
+                            {new Date(m.scheduledAt).toLocaleDateString(
+                              'tr-TR'
+                            )}
+                            )
+                          </option>
+                        ))}
+                      </select>
                     </td>
                     <td className="px-4 py-3">
                       <Button

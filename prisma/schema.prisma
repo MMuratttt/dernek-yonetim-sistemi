@@ -275,6 +275,8 @@ model Meeting {
   minutes              MeetingMinutes?
   proxies              MeetingProxy[]
   documents            MeetingDocument[]
+  smsCampaigns         SmsCampaign[]
+  emailCampaigns       EmailCampaign[]
 
   @@index([organizationId, scheduledAt], map: "Meeting_org_scheduled_idx")
 }
@@ -470,6 +472,7 @@ model ScheduledDebitMember {
 model SmsCampaign {
   id              String         @id @default(cuid())
   organizationId  String
+  meetingId       String?
   name            String
   message         String
   channel         MessageChannel @default(SMS)
@@ -481,9 +484,11 @@ model SmsCampaign {
   startedAt       DateTime?
   completedAt     DateTime?
   organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  meeting         Meeting?       @relation(fields: [meetingId], references: [id], onDelete: SetNull)
   messages        SmsMessage[]
 
   @@index([organizationId, createdAt])
+  @@index([meetingId])
 }
 
 model SmsMessage {
@@ -512,6 +517,7 @@ model SmsMessage {
 model EmailCampaign {
   id              String         @id @default(cuid())
   organizationId  String
+  meetingId       String?
   name            String
   subject         String
   message         String
@@ -524,9 +530,11 @@ model EmailCampaign {
   startedAt       DateTime?
   completedAt     DateTime?
   organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  meeting         Meeting?       @relation(fields: [meetingId], references: [id], onDelete: SetNull)
   messages        EmailMessage[]
 
   @@index([organizationId, createdAt])
+  @@index([meetingId])
 }
 
 model EmailMessage {
