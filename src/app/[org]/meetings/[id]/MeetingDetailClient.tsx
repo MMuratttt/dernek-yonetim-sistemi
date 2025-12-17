@@ -10,6 +10,14 @@ import { ListRow } from '@/components/ui/list-row'
 import { Spinner } from '@/components/ui/spinner'
 import { useToast } from '@/components/ui/toast'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
   getMeetingTypeLabel,
   getMeetingDocumentTypeLabel,
 } from '@/lib/meetings'
@@ -28,15 +36,15 @@ export default function MeetingDetailClient({
   const router = useRouter()
   const initialTab = (() => {
     const t = (searchParams?.get('tab') || '').toLowerCase()
-    const allowed = ['overview', 'agendas', 'invites', 'documents']
+    const allowed = ['overview', 'invites', 'documents', 'notes']
     return (allowed.includes(t) ? (t as any) : 'overview') as
       | 'overview'
-      | 'agendas'
       | 'invites'
       | 'documents'
+      | 'notes'
   })()
   const [active, setActive] = useState<
-    'overview' | 'agendas' | 'invites' | 'documents'
+    'overview' | 'invites' | 'documents' | 'notes'
   >(initialTab)
   const [loading, setLoading] = useState(false)
   const [meeting, setMeeting] = useState<any | null>(initialMeeting || null)
@@ -47,6 +55,8 @@ export default function MeetingDetailClient({
   const [selectedDocumentType, setSelectedDocumentType] = useState<string>('')
   const [customDocumentName, setCustomDocumentName] = useState<string>('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [noteToDelete, setNoteToDelete] = useState<string | null>(null)
   const { add } = useToast()
 
   const REQUIRED_DOCUMENT_TYPES = [
@@ -103,25 +113,49 @@ export default function MeetingDetailClient({
   }
   async function addAgenda() {
     if (!agendaTitle.trim()) return
+    const newItem = {
+      order: agendas.length,
+      title: agendaTitle.trim(),
+    }
     const res = await fetch(`/api/${org}/meetings/agendas`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ meetingId, title: agendaTitle }),
+      body: JSON.stringify({
+        meetingId,
+        items: [
+          ...agendas.map((a) => ({ id: a.id, order: a.order, title: a.title })),
+          newItem,
+        ],
+      }),
     })
-    if (!res.ok) return add({ variant: 'error', title: 'Gündem eklenemedi' })
+    if (!res.ok) return add({ variant: 'error', title: 'Not eklenemedi' })
     setAgendaTitle('')
     await loadAgendas()
-    add({ variant: 'success', title: 'Gündem eklendi' })
+    add({ variant: 'success', title: 'Not eklendi' })
   }
-  async function deleteAgenda(id: string) {
-    if (!confirm('Gündemi silmek istiyor musunuz?')) return
-    const res = await fetch(
-      `/api/${org}/meetings/agendas?id=${encodeURIComponent(id)}`,
-      { method: 'DELETE' }
-    )
-    if (!res.ok) return add({ variant: 'error', title: 'Gündem silinemedi' })
+  function deleteAgenda(id: string) {
+    setNoteToDelete(id)
+    setDeleteConfirmOpen(true)
+  }
+  async function confirmDeleteAgenda() {
+    if (!noteToDelete) return
+    const filteredItems = agendas
+      .filter((a) => a.id !== noteToDelete)
+      .map((a, idx) => ({
+        id: a.id,
+        order: idx,
+        title: a.title,
+      }))
+    const res = await fetch(`/api/${org}/meetings/agendas`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ meetingId, items: filteredItems }),
+    })
+    setDeleteConfirmOpen(false)
+    setNoteToDelete(null)
+    if (!res.ok) return add({ variant: 'error', title: 'Not silinemedi' })
     await loadAgendas()
-    add({ variant: 'success', title: 'Gündem silindi' })
+    add({ variant: 'success', title: 'Not silindi' })
   }
 
   // Invites
@@ -230,7 +264,7 @@ export default function MeetingDetailClient({
   }
 
   useEffect(() => {
-    if (active === 'agendas') loadAgendas()
+    if (active === 'notes') loadAgendas()
     if (active === 'invites') loadInvites()
     if (active === 'documents') loadDocuments()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -239,9 +273,9 @@ export default function MeetingDetailClient({
   const tabs = useMemo(
     () => [
       { id: 'overview', label: 'Özet' },
-      { id: 'agendas', label: 'Gündem' },
       { id: 'invites', label: 'Davetiyeler' },
       { id: 'documents', label: 'Belgeler' },
+      { id: 'notes', label: 'Notlar' },
     ],
     []
   )
@@ -357,12 +391,12 @@ export default function MeetingDetailClient({
         )}
       </TabPanel>
 
-      <TabPanel active={active === 'agendas'}>
+      <TabPanel active={active === 'notes'}>
         <div className="flex items-center gap-2 mb-2">
           <Input
             value={agendaTitle}
             onChange={(e) => setAgendaTitle(e.target.value)}
-            placeholder="Gündem maddesi"
+            placeholder="Not ekle"
             className="flex-1"
           />
           <Button onClick={addAgenda}>Ekle</Button>
@@ -374,7 +408,7 @@ export default function MeetingDetailClient({
               className="p-2 flex items-center justify-between text-sm"
             >
               <div>
-                {a.order}. {a.title}
+                {a.order + 1}. {a.title}
               </div>
               <Button
                 size="sm"
@@ -386,9 +420,7 @@ export default function MeetingDetailClient({
             </li>
           ))}
           {agendas.length === 0 && (
-            <li className="p-2 text-sm text-muted-foreground">
-              Gündem maddesi yok.
-            </li>
+            <li className="p-2 text-sm text-muted-foreground">Not yok.</li>
           )}
         </ul>
       </TabPanel>
@@ -543,6 +575,31 @@ export default function MeetingDetailClient({
           )}
         </ul>
       </TabPanel>
+
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Notu silmek istiyor musunuz?</DialogTitle>
+            <DialogDescription>
+              Bu işlem geri alınamaz. Not kalıcı olarak silinecektir.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteConfirmOpen(false)
+                setNoteToDelete(null)
+              }}
+            >
+              İptal
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteAgenda}>
+              Sil
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

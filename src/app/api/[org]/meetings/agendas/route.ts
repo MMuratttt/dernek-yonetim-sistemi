@@ -6,16 +6,14 @@ import { ensureOrgAccessBySlug, WRITE_ROLES } from '@/lib/authz'
 
 const UpsertAgenda = z.object({
   meetingId: z.string().min(1),
-  items: z
-    .array(
-      z.object({
-        id: z.string().optional(),
-        order: z.number().int().min(0),
-        title: z.string().min(1),
-        description: z.string().optional(),
-      })
-    )
-    .min(1),
+  items: z.array(
+    z.object({
+      id: z.string().optional(),
+      order: z.number().int().min(0),
+      title: z.string().min(1),
+      description: z.string().optional(),
+    })
+  ),
 })
 
 export async function GET(
