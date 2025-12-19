@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { getSession } from '../../../../../lib/auth'
 import { ensureOrgAccessBySlug, WRITE_ROLES } from '../../../../../lib/authz'
-import { parse } from 'csv-parse/sync'
 import * as XLSX from 'xlsx'
 import { normalizePhoneNumber } from '../../../../../lib/utils'
 
@@ -36,26 +35,11 @@ export async function POST(
   if (!access.allowed)
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const url = new URL(req.url)
-  const dryRun = ['1', 'true', 'yes'].includes(
-    (url.searchParams.get('dryRun') || '').toLowerCase()
-  )
-
   const ct = (req.headers.get('content-type') || '').toLowerCase()
   let rows: Row[] = []
 
   try {
-    if (ct.includes('application/json')) {
-      const json = await req.json()
-      rows = Array.isArray(json) ? (json as Row[]) : (json?.rows as Row[]) || []
-    } else if (ct.includes('text/csv')) {
-      const text = await req.text()
-      const records = parse(text, {
-        columns: true,
-        skip_empty_lines: true,
-      }) as any[]
-      rows = records.map((r) => normalizeRow(r))
-    } else if (ct.includes('multipart/form-data')) {
+    if (ct.includes('multipart/form-data')) {
       const form = await req.formData()
       const file = form.get('file') as File | null
       if (!file)
@@ -72,7 +56,7 @@ export async function POST(
       rows = parseXlsx(ab)
     } else {
       return NextResponse.json(
-        { error: 'Desteklenmeyen içerik türü' },
+        { error: 'Sadece XLSX dosyaları desteklenmektedir' },
         { status: 415 }
       )
     }
@@ -106,7 +90,7 @@ export async function POST(
       const lastName = (r.lastName || '').trim()
       if (!firstName || !lastName) {
         errors++
-        details.push({ index: idx, reason: 'firstName/lastName gerekli' })
+        details.push({ index: idx, reason: 'Ad/Soyad zorunludur' })
         continue
       }
 
@@ -161,12 +145,6 @@ export async function POST(
           : new Date(),
       }
 
-      if (dryRun) {
-        if (existing) updated++
-        else created++
-        continue
-      }
-
       try {
         if (existing) {
           await prisma.member.update({ where: { id: existing.id }, data })
@@ -196,17 +174,72 @@ export async function POST(
 }
 
 function normalizeRow(r: any): Row {
-  const m = (k: string) => String(r[k] ?? r[k?.toLowerCase()] ?? '').trim()
+  // Helper to get value by multiple possible column names (case-insensitive)
+  const get = (...keys: string[]) => {
+    for (const k of keys) {
+      // Try exact match first
+      if (r[k] !== undefined && r[k] !== '') return String(r[k]).trim()
+      // Try lowercase
+      const lower = k.toLowerCase()
+      if (r[lower] !== undefined && r[lower] !== '')
+        return String(r[lower]).trim()
+      // Try case-insensitive search
+      const found = Object.keys(r).find((rk) => rk.toLowerCase() === lower)
+      if (found && r[found] !== undefined && r[found] !== '')
+        return String(r[found]).trim()
+    }
+    return ''
+  }
+
+  const statusRaw = get('Durum', 'durum', 'status', 'Status')
+  const statusUpper = statusRaw.toUpperCase()
+
+  // Map Turkish status values to English
+  const statusMap: Record<string, Row['status']> = {
+    ACTIVE: 'ACTIVE',
+    PASSIVE: 'PASSIVE',
+    LEFT: 'LEFT',
+    AKTİF: 'ACTIVE',
+    AKTIF: 'ACTIVE',
+    PASİF: 'PASSIVE',
+    PASIF: 'PASSIVE',
+    AYRILDI: 'LEFT',
+    AYRILAN: 'LEFT',
+  }
+  const status = statusMap[statusUpper] || undefined
+
   return {
-    firstName: m('firstName') || m('ad') || m('isim'),
-    lastName: m('lastName') || m('soyad') || m('soyisim'),
-    email: m('email') || m('e-posta') || m('eposta'),
-    phone: m('phone') || m('telefon'),
-    nationalId: m('nationalId') || m('tc') || m('tcKimlik'),
-    status: (m('status')?.toUpperCase() as any) || undefined,
-    address: m('address') || m('adres'),
-    occupation: m('occupation') || m('meslek'),
-    joinedAt: m('joinedAt') || m('kayitTarihi'),
+    firstName: get('Ad', 'ad', 'firstName', 'isim', 'İsim', 'name'),
+    lastName: get('Soyad', 'soyad', 'lastName', 'soyisim', 'Soyisim'),
+    email: get(
+      'E-posta',
+      'e-posta',
+      'email',
+      'Email',
+      'eposta',
+      'mail',
+      'Mail'
+    ),
+    phone: get('Telefon', 'telefon', 'phone', 'Phone', 'tel', 'Tel'),
+    nationalId: get(
+      'TC Kimlik',
+      'tc kimlik',
+      'TC',
+      'tc',
+      'nationalId',
+      'tcKimlik',
+      'Tc Kimlik'
+    ),
+    status,
+    address: get('Adres', 'adres', 'address', 'Address'),
+    occupation: get('Meslek', 'meslek', 'occupation', 'Occupation'),
+    joinedAt: get(
+      'Kayıt Tarihi',
+      'kayıt tarihi',
+      'kayitTarihi',
+      'joinedAt',
+      'KayıtTarihi'
+    ),
   }
 }
 
