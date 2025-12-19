@@ -1,13 +1,11 @@
 'use client'
 
 import { useState, useRef, useMemo } from 'react'
-import { useState, useRef, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
-import { Select } from '@/components/ui/select'
 import { Select } from '@/components/ui/select'
 import { Plus, X, Download } from 'lucide-react'
 import { downloadServerPdf } from '@/lib/serverPdf'
@@ -654,10 +652,10 @@ export function GenelKurulDivanEditor({
               <p>
                 {orgName}&apos;nin {data.meetingDate} Günü saat{' '}
                 {data.meetingTime} {data.meetingLocation} adresinde yapılan
-                olağan Genel Kurul toplantısında salt çoğunluğun olduğu
-                olağan Genel Kurul toplantısında salt çoğunluğun olduğu
-                anlaşılıp ({data.totalMembers} Üyeden {data.presentMembers} Üye
-                bulundu) toplantı, Yönetim Kurulu Başkanı{' '}
+                olağan Genel Kurul toplantısında salt çoğunluğun olduğu olağan
+                Genel Kurul toplantısında salt çoğunluğun olduğu anlaşılıp (
+                {data.totalMembers} Üyeden {data.presentMembers} Üye bulundu)
+                toplantı, Yönetim Kurulu Başkanı{' '}
                 {yonetimKuruluBaskani?.name || '(Tanımlı değil)'} tarafından
                 açılmıştır. Açılışa müteakiben verilen önerge ile,
               </p>
