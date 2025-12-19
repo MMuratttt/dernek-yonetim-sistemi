@@ -1,140 +1,285 @@
 # Dernek Yönetim Sistemi
 
-Modern, çoklu-tenant (çoklu dernek) yönetim platformu.
+Modern, çoklu-kiracı (multi-tenant) dernek yönetim platformu. Türkiye'deki dernekler için üye yönetimi, toplantı organizasyonu, kurul yönetimi, aidat takibi ve iletişim araçlarını tek bir çatı altında sunar.
 
-## Hızlı Başlangıç
+## ✨ Özellikler
 
-Önkoşullar:
+### 🏢 Çoklu Dernek Desteği
+
+- Tek platformda birden fazla dernek yönetimi
+- Her dernek için ayrı alan (slug tabanlı yönlendirme)
+- Opsiyonel subdomain desteği
+- Rol tabanlı yetkilendirme (Superadmin, Admin, Personel, Üye)
+
+### 👥 Üye Yönetimi
+
+- Kapsamlı üye profilleri (TC kimlik, iletişim, meslek, statü)
+- Gelişmiş arama, filtreleme ve sıralama
+- Etiket ve grup sistemi (AND/OR filtre modları)
+- Toplu import/export (CSV, Excel)
+- Üye fotoğrafı yönetimi (Local / S3 / MinIO)
+- Sonsuz kaydırma ile sayfalama
+
+### 🏛️ Kurul Yönetimi
+
+- Yönetim Kurulu ve Denetim Kurulu modülleri
+- Dönem bazlı üyelik takibi
+- Görev dağılımı (Başkan, Başkan Yrd., Sekreter, Sayman, Üye)
+- Asil ve yedek üye ayrımı
+- Kurul kararları ve tutanakları
+
+### 📋 Toplantı Yönetimi
+
+- Olağan ve Olağanüstü Genel Kurul planlama
+- Gündem, davetiye ve yoklama takibi
+- Vekalet/temsil yönetimi
+- Toplantı kararları ve tutanakları
+- Belge yükleme ve arşivleme
+
+### 💰 Finans ve Aidat
+
+- Aidat planları ve dönemleri
+- Toplu borçlandırma
+- Ödeme kaydı ve bakiye takibi
+- Kasa yönetimi
+- Makbuz PDF üretimi
+- Finansal raporlar
+
+### 📄 Şablon ve Belge Üretimi
+
+- Mustache tabanlı dinamik şablonlar
+- Değişken desteği (`{{uye.ad}}`, `{{uye.soyad}}`, vb.)
+- PDF üretimi (Playwright ile HTML-to-PDF)
+- DOCX üretimi
+- Hazır şablonlar:
+  - Genel Kurul Divan Tutanağı
+  - Hazirun Listesi
+  - Faaliyet Raporu
+  - Denetim Kurulu Raporu
+  - Mali Rapor
+  - Üyelik Belgesi
+  - Üyelik Başvuru Formu
+
+### 📱 İletişim
+
+- Toplu SMS gönderimi
+- Toplu e-posta gönderimi
+- Kampanya yönetimi ve geçmişi
+- Kişiselleştirme placeholder'ları
+- Rate limiting ve retry mekanizması
+
+## 🛠️ Teknolojiler
+
+| Katman     | Teknoloji               |
+| ---------- | ----------------------- |
+| Framework  | Next.js 15 (App Router) |
+| Dil        | TypeScript              |
+| Stil       | Tailwind CSS            |
+| Veritabanı | PostgreSQL              |
+| ORM        | Prisma                  |
+| Auth       | NextAuth.js             |
+| State      | React Query, Zustand    |
+| PDF        | Playwright              |
+| DOCX       | docx.js                 |
+| E-posta    | Nodemailer              |
+| SMS        | Twilio (opsiyonel)      |
+
+## 🚀 Kurulum
+
+### Önkoşullar
 
 - Node.js >= 18
-- npm
-- (Opsiyonel) Docker Desktop (lokal PostgreSQL için önerilir)
+- npm veya yarn
+- PostgreSQL (veya Docker Desktop)
 
-Kurulum:
+### 1. Bağımlılıkları Yükle
 
-1. Bağımlılıklar
-
-```powershell
+```bash
 npm install
 ```
 
-2. Ortam değişkenleri
-   .env dosyası zaten eklendi. Örnek için `.env.example` dosyasına bakın.
+### 2. Ortam Değişkenleri
 
-3. Veritabanı (opsiyonel şimdilik)
-   - Docker Desktop çalışıyorsa:
+`.env` dosyası oluşturun (örnek için `.env.example`):
 
-     ```powershell
-     npm run db:up
-     ```
+```env
+# Veritabanı
+DATABASE_URL="postgresql://dernek:dernek123@localhost:5432/dernekdb"
 
-   - Prisma client üretimi:
+# Auth
+NEXTAUTH_SECRET="your-secret-key"
+NEXTAUTH_URL="http://localhost:3000"
 
-     ```powershell
-     npm run prisma:generate
-     ```
+# Opsiyonel: Subdomain Yönlendirme
+ENABLE_SUBDOMAIN_ROUTING=0
+BASE_DOMAIN=localhost
+```
 
-   - Şema migration (DB çalışıyorsa):
+### 3. Veritabanı
 
-     ```powershell
-     npm run prisma:migrate
-     ```
+Docker ile PostgreSQL başlatın:
 
-   - Seed (admin + örnek veriler):
+```bash
+npm run db:up
+```
 
-     ```powershell
-     npm run db:seed
-     ```
+Prisma migration ve seed:
 
-4. Geliştirme sunucusu
+```bash
+npm run prisma:generate
+npm run prisma:migrate
+npm run db:seed
+```
 
-```powershell
+### 4. Geliştirme Sunucusu
+
+```bash
 npm run dev
 ```
 
 Uygulama: http://localhost:3000
 
-Alt alan adı ile yönlendirme (opsiyonel):
+**Varsayılan Giriş:** `admin@example.com` / `admin123`
 
-- `middleware.ts` ile subdomain -> tenant yönlendirmesi yapılabilir. Etkinleştirmek için `.env` içine:
-
-  ```env
-  ENABLE_SUBDOMAIN_ROUTING=1
-  BASE_DOMAIN=localhost # veya example.com
-  ```
-
-- Örn. `ornek-dernek.localhost:3000` isteği, otomatik olarak `/{org}` rotalarına yönlendirilir.
-
-## Proje Yapısı
-
-- src/app: Next.js App Router
-- prisma: Prisma şema ve migration’lar
-- src/lib: yardımcı kütüphaneler (ör. prisma client)
-- src/components: UI bileşenleri ve sağlayıcılar
-
-## Yol Haritası
-
-Tüm detaylar için ROADMAP.md dosyasını açın.
-
-## Notlar
-
-- Docker kullanmıyorsanız `DATABASE_URL` değerini kendi PostgreSQL sunucunuza göre düzenleyin.
-- Windows + PowerShell için komutlar yukarıda verilmiştir.
-
-Varsayılan giriş (seed): admin@example.com / admin123
-
-## Fotoğraf Depolama (Üye Fotoğrafı)
-
-- Varsayılan (ücretsiz): local `public/uploads` klasörü.
-- Tamamen ücretsiz ve S3 uyumlu bir alternatif: MinIO (self-hosted). `docker-compose.yml` içinde örnek servis yorum satırında mevcut; açarak kullanabilirsiniz.
-- AWS S3 opsiyoneldir ve ücretlendirmeye tabidir (sınırlı da olsa free tier kapsamı vardır). Ücret ödemek istemiyorsanız AWS değişkenlerini boş bırakın ve local/MinIO kullanın.
-- S3 uyumlu bir servis kullanacaksanız `.env` dosyanıza şunları ekleyin:
-  - `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_BASE_URL`
-  - (Opsiyonel) `S3_ENDPOINT`, `S3_FORCE_PATH_STYLE=true` (MinIO gibi servisler için)
-
-## E-posta (Yerel ve Ücretsiz)
-
-- MailHog servisi docker-compose içinde tanımlıdır.
-- Web UI: http://localhost:8025 — SMTP: localhost:1025
-- Varsayılan `.env` değeri gerekmez; isterseniz aşağıdaki değişkenleri ekleyin:
-  - `SMTP_HOST=localhost`
-  - `SMTP_PORT=1025`
-  - `MAIL_FROM=noreply@example.test`
-- Test endpoint: POST `/api/mail/test` (oturum gerektirir). MailHog UI’den iletileri görebilirsiniz.
-
-## Commit Mesaj Standardı (Conventional Commits)
-
-Bu projede commit mesajları için **Conventional Commits** formatını kullanıyoruz. Amaç otomatik sürümleme, değişiklik günlüğü (CHANGELOG) üretimi ve okunabilirliktir.
-
-Şablon dosyası: `.gitmessage.txt` (otomatik kullanmak için: `git config commit.template .gitmessage.txt`).
-
-Temel biçim:
+## 📁 Proje Yapısı
 
 ```
-<type>(opsiyonel-scope): <kısa açıklama>
-
-<gövde - opsiyonel>
-
-BREAKING CHANGE: <açıklama> (opsiyonel)
-Closes: #123 (opsiyonel)
+├── prisma/                 # Prisma şema ve migration'lar
+│   ├── schema.prisma
+│   ├── migrations/
+│   └── seed.js
+├── src/
+│   ├── app/                # Next.js App Router
+│   │   ├── [org]/          # Tenant sayfaları
+│   │   │   ├── boards/     # Kurul yönetimi
+│   │   │   ├── finance/    # Finans ve aidat
+│   │   │   ├── groups/     # Grup yönetimi
+│   │   │   ├── meetings/   # Toplantı yönetimi
+│   │   │   ├── members/    # Üye yönetimi
+│   │   │   ├── settings/   # Dernek ayarları
+│   │   │   ├── sms/        # SMS yönetimi
+│   │   │   └── templates/  # Şablon yönetimi
+│   │   ├── api/            # API route'ları
+│   │   ├── auth/           # Auth sayfaları
+│   │   └── org/            # Dernek oluşturma
+│   ├── components/         # React bileşenleri
+│   │   ├── ui/             # Temel UI atomları
+│   │   └── landing/        # Landing page bileşenleri
+│   ├── lib/                # Yardımcı kütüphaneler
+│   │   ├── email/          # E-posta servisi
+│   │   ├── sms/            # SMS servisi
+│   │   ├── auth.ts         # Auth yapılandırması
+│   │   ├── authz.ts        # Yetkilendirme
+│   │   └── prisma.ts       # Prisma client
+│   └── types/              # TypeScript tanımları
+├── public/                 # Statik dosyalar
+└── scripts/                # Yardımcı scriptler
 ```
 
-Geçerli type değerleri:
-`feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
+## 🔧 Scriptler
 
-Örnekler:
+| Komut                     | Açıklama                     |
+| ------------------------- | ---------------------------- |
+| `npm run dev`             | Geliştirme sunucusu          |
+| `npm run build`           | Production build             |
+| `npm run start`           | Production sunucusu          |
+| `npm run lint`            | ESLint kontrolü              |
+| `npm run typecheck`       | TypeScript kontrolü          |
+| `npm run test`            | Vitest testleri              |
+| `npm run db:up`           | Docker ile PostgreSQL başlat |
+| `npm run db:down`         | Docker PostgreSQL durdur     |
+| `npm run prisma:generate` | Prisma client oluştur        |
+| `npm run prisma:migrate`  | Migration uygula             |
+| `npm run prisma:studio`   | Prisma Studio aç             |
+| `npm run db:seed`         | Örnek veri yükle             |
+
+## ⚙️ Opsiyonel Yapılandırma
+
+### Fotoğraf Depolama
+
+**Varsayılan:** Local (`public/uploads`)
+
+**S3 / MinIO için:**
+
+```env
+S3_BUCKET=dernek-uploads
+S3_REGION=eu-central-1
+S3_ACCESS_KEY_ID=your-key
+S3_SECRET_ACCESS_KEY=your-secret
+S3_PUBLIC_BASE_URL=https://your-bucket.s3.amazonaws.com
+
+# MinIO için ek:
+S3_ENDPOINT=http://localhost:9000
+S3_FORCE_PATH_STYLE=true
+```
+
+### E-posta (Geliştirme)
+
+Docker Compose içinde MailHog servisi mevcuttur:
+
+- Web UI: http://localhost:8025
+- SMTP: `localhost:1025`
+
+```env
+SMTP_HOST=localhost
+SMTP_PORT=1025
+MAIL_FROM=noreply@example.test
+```
+
+### SMS
+
+```env
+SMS_PROVIDER=dummy|twilio
+TWILIO_ACCOUNT_SID=your-sid
+TWILIO_AUTH_TOKEN=your-token
+TWILIO_FROM=+1234567890
+ORG_SMS_PER_MIN=60
+SMS_RETRY_LIMIT=2
+```
+
+### Subdomain Yönlendirme
+
+```env
+ENABLE_SUBDOMAIN_ROUTING=1
+BASE_DOMAIN=example.com
+```
+
+Örnek: `ornek-dernek.example.com` → `/ornek-dernek/...`
+
+## 🧪 Test
+
+```bash
+npm run test
+```
+
+Testler Vitest ile yazılmıştır. `src/tests/` klasöründe API ve servis testleri bulunur.
+
+## 📝 Commit Standardı
+
+[Conventional Commits](https://www.conventionalcommits.org/) formatı kullanılır:
 
 ```
-feat(auth): magic link ile giriş ekle
-fix(sms): boş telefon numarası hatasını düzelt
-refactor(prisma): ortak sorgu helper'a taşındı
-chore(ci): typecheck aşamasını pipeline'a ekle
+<type>(scope): kısa açıklama
+
+[gövde]
+
+[BREAKING CHANGE: açıklama]
 ```
 
-İpuçları:
+**Type'lar:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
 
-- 72 karakteri geçmeyen özet satırı kullanın.
-- Gövdede "ne" yerine "neden" odaklı açıklama yapın.
-- Breaking change için `BREAKING CHANGE:` ile başlayın (semver major üretimine yardımcı olur).
+**Örnekler:**
 
-Gerekiyorsa commitlint kurallarını özelleştirmek için `commitlint.config.cjs` güncellenebilir.
+```
+feat(members): toplu import özelliği eklendi
+fix(finance): bakiye hesaplama hatası düzeltildi
+docs(readme): kurulum adımları güncellendi
+```
+
+## 🗺️ Yol Haritası
+
+Detaylı geliştirme planı için [ROADMAP.md](./ROADMAP.md) dosyasına bakın.
+
+## 📄 Lisans
+
+Bu proje özel kullanım için geliştirilmiştir.
