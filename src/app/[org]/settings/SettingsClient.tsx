@@ -316,6 +316,9 @@ export function SettingsClient({
                 src={initialData.logoUrl}
                 alt={`${initialData.name} logosu`}
                 className="h-24 w-24 object-contain rounded-lg border bg-white shadow-sm"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                }}
               />
             ) : (
               <div className="h-24 w-24 rounded-lg border bg-muted flex items-center justify-center">
@@ -889,6 +892,9 @@ export function SettingsClient({
               src={logoPreview}
               alt="Logo önizleme"
               className="h-20 w-20 object-contain rounded border"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+              }}
             />
             <button
               type="button"
