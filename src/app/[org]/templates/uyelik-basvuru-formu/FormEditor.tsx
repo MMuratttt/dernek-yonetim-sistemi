@@ -228,7 +228,7 @@ export default function FormEditor({
           <CardContent>
             <div
               ref={previewRef}
-              className="border rounded-lg px-12 py-6 bg-white"
+              className="border rounded-lg px-12 py-6 bg-white print:border-0"
               style={{ color: '#000000' }}
             >
               <div className="text-center mb-4">

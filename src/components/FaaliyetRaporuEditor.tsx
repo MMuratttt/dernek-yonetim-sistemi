@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -17,7 +17,8 @@ interface YearActivity {
 
 interface FaaliyetRaporuData {
   reportDate: string
-  period: string
+  periodStartYear: string
+  periodEndYear: string
   presidentName: string
   yearActivities: YearActivity[]
   closingText: string
@@ -35,40 +36,45 @@ export function FaaliyetRaporuEditor({
   presidentName,
 }: Props) {
   const previewRef = useRef<HTMLDivElement>(null)
+  const currentYear = new Date().getFullYear()
+
+  // Format current date as DD.MM.YYYY for default report date
+  const formatCurrentDate = () => {
+    const now = new Date()
+    const day = String(now.getDate()).padStart(2, '0')
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const year = now.getFullYear()
+    return `${day}.${month}.${year}`
+  }
+
   const [data, setData] = useState<FaaliyetRaporuData>({
-    reportDate: initialData?.reportDate || '14.12.2025',
-    period: initialData?.period || '2023–2025',
+    reportDate: initialData?.reportDate || formatCurrentDate(),
+    periodStartYear: initialData?.periodStartYear || String(currentYear - 2),
+    periodEndYear: initialData?.periodEndYear || String(currentYear),
     presidentName: initialData?.presidentName || presidentName,
     yearActivities: initialData?.yearActivities || [
       {
-        year: '2023',
+        year: String(currentYear - 2),
         activities: [
-          'Cami içi temizlik ve düzenli bakım çalışmaları yapıldı.',
-          'Elektrik tesisatının kontrolü ve küçük çaplı tamirleri gerçekleştirildi.',
-          'Caminin halıları yıkatıldı ve bazı bölümler yenilendi.',
-          'Ramazan ayı boyunca teravih ve mukabele programlarına destek sağlandı.',
-          'İhtiyaç sahibi ailelere erzak yardımı yapıldı.',
+          'Dernek faaliyetleri ve organizasyonlar düzenlendi.',
+          'Bakım, onarım ve tadilat çalışmaları yapıldı.',
+          'Sosyal yardım ve dayanışma faaliyetleri gerçekleştirildi.',
         ],
       },
       {
-        year: '2024',
+        year: String(currentYear - 1),
         activities: [
-          'Cami çevresindeki aydınlatma sistemi yenilendi.',
-          'Ses sistemi kontrol edilerek hoparlörlerde bakım yapıldı.',
-          'Kuran Kursu sınıfında boya–badana ve tadilat işleri yapıldı.',
-          "Yaz Kur'an kursu için eğitim materyalleri temin edildi.",
-          'Bağış kutuları düzenli şekilde açılarak kayıt altına alındı.',
+          'Dernek faaliyetleri ve organizasyonlar düzenlendi.',
+          'Bakım, onarım ve tadilat çalışmaları yapıldı.',
+          'Sosyal yardım ve dayanışma faaliyetleri gerçekleştirildi.',
         ],
       },
       {
-        year: '2025',
+        year: String(currentYear),
         activities: [
-          'Cami avlusunda çevre düzenlemesi ve parke taş tamiri yapıldı.',
-          'Elektrik osvatları ayırlandı ve giderler düzenlendi.',
-          'Çok bakım çalışmaları yapıldı.',
-          'Temizlik ve lürtasiye malzemeleri alındı.',
-          'Ramazan ve Kurban dönemlerinde yardım organizasyonları yapıldı.',
-          'Dernek kayıtları ve banka hesapları güncellendi.',
+          'Dernek faaliyetleri ve organizasyonlar düzenlendi.',
+          'Bakım, onarım ve tadilat çalışmaları yapıldı.',
+          'Sosyal yardım ve dayanışma faaliyetleri gerçekleştirildi.',
         ],
       },
     ],
@@ -80,6 +86,47 @@ export function FaaliyetRaporuEditor({
   const updateField = (field: keyof FaaliyetRaporuData, value: any) => {
     setData((prev) => ({ ...prev, [field]: value }))
   }
+
+  // Default placeholder activities for new years
+  const defaultActivities = [
+    'Dernek faaliyetleri ve organizasyonlar düzenlendi.',
+    'Bakım, onarım ve tadilat çalışmaları yapıldı.',
+    'Sosyal yardım ve dayanışma faaliyetleri gerçekleştirildi.',
+  ]
+
+  // Sync yearActivities when period years change
+  useEffect(() => {
+    const startYear = parseInt(data.periodStartYear, 10)
+    const endYear = parseInt(data.periodEndYear, 10)
+
+    if (isNaN(startYear) || isNaN(endYear) || startYear > endYear) return
+
+    // Generate years array for the period
+    const yearsInPeriod: string[] = []
+    for (let y = startYear; y <= endYear; y++) {
+      yearsInPeriod.push(String(y))
+    }
+
+    // Check if current yearActivities match the period
+    const currentYears = data.yearActivities.map((ya) => ya.year)
+    const yearsMatch =
+      yearsInPeriod.length === currentYears.length &&
+      yearsInPeriod.every((y, i) => currentYears[i] === y)
+
+    if (!yearsMatch) {
+      // Build new yearActivities, preserving existing activities where year matches
+      const existingByYear = new Map(
+        data.yearActivities.map((ya) => [ya.year, ya.activities])
+      )
+
+      const newYearActivities: YearActivity[] = yearsInPeriod.map((year) => ({
+        year,
+        activities: existingByYear.get(year) || [...defaultActivities],
+      }))
+
+      setData((prev) => ({ ...prev, yearActivities: newYearActivities }))
+    }
+  }, [data.periodStartYear, data.periodEndYear])
 
   const addYear = () => {
     const newYear: YearActivity = {
@@ -129,13 +176,15 @@ export function FaaliyetRaporuEditor({
     setData((prev) => ({ ...prev, yearActivities: updated }))
   }
 
+  const periodDisplay = `${data.periodStartYear}-${data.periodEndYear}`
+
   const handleDownloadPDF = async () => {
     if (!previewRef.current) return
 
     try {
       const pdfGen = new TurkishPDFGenerator()
       pdfGen.setElement(previewRef.current)
-      await pdfGen.generatePDF(`faaliyet-raporu-${data.period}.pdf`)
+      await pdfGen.generatePDF(`faaliyet-raporu-${periodDisplay}.pdf`)
     } catch (error) {
       console.error('PDF oluşturma hatası:', error)
       alert('PDF oluşturulurken bir hata oluştu.')
@@ -146,23 +195,32 @@ export function FaaliyetRaporuEditor({
     <div className="space-y-6">
       <Card>
         <CardContent className="pt-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label>Rapor Tarihi</Label>
               <Input
                 type="text"
                 value={data.reportDate}
                 onChange={(e) => updateField('reportDate', e.target.value)}
-                placeholder="14.12.2025"
+                placeholder="GG.AA.YYYY"
               />
             </div>
             <div>
-              <Label>Dönem</Label>
+              <Label>Dönem Başlangıç Yılı</Label>
               <Input
-                type="text"
-                value={data.period}
-                onChange={(e) => updateField('period', e.target.value)}
-                placeholder="2023-2025"
+                type="number"
+                value={data.periodStartYear}
+                onChange={(e) => updateField('periodStartYear', e.target.value)}
+                placeholder={String(currentYear - 2)}
+              />
+            </div>
+            <div>
+              <Label>Dönem Bitiş Yılı</Label>
+              <Input
+                type="number"
+                value={data.periodEndYear}
+                onChange={(e) => updateField('periodEndYear', e.target.value)}
+                placeholder={String(currentYear)}
               />
             </div>
           </div>
@@ -264,7 +322,7 @@ export function FaaliyetRaporuEditor({
             <Button
               onClick={() =>
                 downloadServerPdf(
-                  `faaliyet-raporu-${data.period}.pdf`,
+                  `faaliyet-raporu-${periodDisplay}.pdf`,
                   previewRef.current
                 )
               }
@@ -276,13 +334,13 @@ export function FaaliyetRaporuEditor({
           </div>
           <div
             ref={previewRef}
-            className="border rounded-lg px-16 py-8 bg-white dark:bg-gray-900"
+            className="border rounded-lg px-16 py-8 bg-white dark:bg-gray-900 print:border-0"
           >
             <div className="text-center mb-6">
               <h2 className="text-xl font-bold mb-1">{orgName}</h2>
               <h3 className="text-lg font-semibold">
                 {data.yearActivities.length} YILLIK FAALİYET RAPORU (
-                {data.period})
+                {periodDisplay})
               </h3>
               <p className="text-sm text-muted-foreground mt-2">
                 Sunulacağı Tarih: {data.reportDate}

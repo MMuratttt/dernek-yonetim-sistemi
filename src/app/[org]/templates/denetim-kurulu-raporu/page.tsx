@@ -33,38 +33,65 @@ export default async function DenetimKuruluRaporuPage({
     },
   })
 
-  // Get Denetim Kurulu members
-  const denetimKuruluMembers = await prisma.boardMember.findMany({
+  // Get Denetim Kurulu Başkanı - member with title DENETIM_KURULU_BASKANI
+  const denetimKuruluBaskani = await prisma.member.findFirst({
     where: {
-      term: {
-        board: {
-          organizationId: access.org.id,
-          type: 'AUDIT',
-        },
-        isActive: true,
-      },
+      organizationId: access.org.id,
+      title: 'DENETIM_KURULU_BASKANI',
+      status: 'ACTIVE',
     },
-    include: {
-      member: {
-        select: {
-          firstName: true,
-          lastName: true,
-        },
-      },
-    },
-    orderBy: {
-      role: 'asc',
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
     },
   })
 
-  const chairman = denetimKuruluMembers.find((m) => m.role === 'PRESIDENT')
-  const chairmanName = chairman
-    ? `${chairman.member.firstName} ${chairman.member.lastName}`
-    : 'Mahmut Cahit Öztürk'
+  const chairmanData = denetimKuruluBaskani
+    ? {
+        id: denetimKuruluBaskani.id,
+        name: `${denetimKuruluBaskani.firstName} ${denetimKuruluBaskani.lastName}`,
+      }
+    : null
 
-  const memberNames = denetimKuruluMembers
-    .filter((m) => m.role !== 'PRESIDENT')
-    .map((m) => `${m.member.firstName} ${m.member.lastName}`)
+  // Get Denetim Kurulu Üyeleri (Asil) - members with title DENETIM_KURULU_ASIL
+  const denetimKuruluUyeleri = await prisma.member.findMany({
+    where: {
+      organizationId: access.org.id,
+      title: 'DENETIM_KURULU_ASIL',
+      status: 'ACTIVE',
+    },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+    },
+    orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+  })
+
+  const boardMembersData = denetimKuruluUyeleri.map((m) => ({
+    id: m.id,
+    name: `${m.firstName} ${m.lastName}`,
+  }))
+
+  // Get all organization members for the picker
+  const allMembers = await prisma.member.findMany({
+    where: {
+      organizationId: access.org.id,
+      status: 'ACTIVE',
+    },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+    },
+    orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+  })
+
+  const availableMembers = allMembers.map((m) => ({
+    id: m.id,
+    name: `${m.firstName} ${m.lastName}`,
+  }))
 
   return (
     <div>
@@ -84,12 +111,9 @@ export default async function DenetimKuruluRaporuPage({
 
       <DenetimKuruluRaporuEditor
         orgName={org?.name || 'Dernek Adı'}
-        chairman={chairmanName}
-        members={
-          memberNames.length > 0
-            ? memberNames
-            : ['Nusret Ulusal', 'Tacettin Aydemir']
-        }
+        chairman={chairmanData}
+        members={boardMembersData}
+        availableMembers={availableMembers}
       />
 
       <div className="grid grid-cols-1 gap-6 mt-6">

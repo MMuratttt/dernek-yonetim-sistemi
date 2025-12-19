@@ -1,15 +1,20 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
+import { Select } from '@/components/ui/select'
 import { Plus, X, Download } from 'lucide-react'
 import { downloadServerPdf } from '@/lib/serverPdf'
-import jsPDF from 'jspdf'
 import { TurkishPDFGenerator } from '@/lib/pdfGenerator'
+
+interface MemberOption {
+  id: string
+  name: string
+}
 
 interface GenelKurulData {
   meetingDate: string
@@ -17,9 +22,12 @@ interface GenelKurulData {
   meetingLocation: string
   totalMembers: number
   presentMembers: number
-  divanBaskan: string
-  katipUye1: string
-  katipUye2: string
+  divanBaskanId: string
+  divanBaskanName: string
+  katipUye1Id: string
+  katipUye1Name: string
+  katipUye2Id: string
+  katipUye2Name: string
   openingText: string
   agendaItems: string[]
   yonetimAsil: string[]
@@ -32,59 +40,94 @@ interface GenelKurulData {
 interface Props {
   initialData?: Partial<GenelKurulData>
   orgName: string
+  orgAddress?: string
+  totalMemberCount?: number
+  availableMembers?: MemberOption[]
 }
 
-export function GenelKurulDivanEditor({ initialData, orgName }: Props) {
+export function GenelKurulDivanEditor({
+  initialData,
+  orgName,
+  orgAddress = '',
+  totalMemberCount = 0,
+  availableMembers = [],
+}: Props) {
   const previewRef = useRef<HTMLDivElement>(null)
+
+  // Generate current date in DD.MM.YYYY format
+  const currentDate = useMemo(() => {
+    const now = new Date()
+    const day = String(now.getDate()).padStart(2, '0')
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const year = now.getFullYear()
+    return `${day}.${month}.${year}`
+  }, [])
+
+  // Generate current time in HH:MM format
+  const currentTime = useMemo(() => {
+    const now = new Date()
+    const hours = String(now.getHours()).padStart(2, '0')
+    const minutes = String(now.getMinutes()).padStart(2, '0')
+    return `${hours}:${minutes}`
+  }, [])
+
   const [data, setData] = useState<GenelKurulData>({
-    meetingDate: initialData?.meetingDate || '14.12.2025',
-    meetingTime: initialData?.meetingTime || '14:00',
-    meetingLocation:
-      initialData?.meetingLocation ||
-      'Hacıtepe Mah Mehmet Akif Ersoy Sok.No : 5 Hamamönü Camii Dernek Odası Altındağ/Ankara',
-    totalMembers: initialData?.totalMembers || 23,
-    presentMembers: initialData?.presentMembers || 23,
-    divanBaskan: initialData?.divanBaskan || 'Mahmut Cahit ÖZTÜRK',
-    katipUye1: initialData?.katipUye1 || 'Nusret ULUSAL',
-    katipUye2: initialData?.katipUye2 || 'İsa KÜSMENOĞLU',
+    meetingDate: initialData?.meetingDate || currentDate,
+    meetingTime: initialData?.meetingTime || currentTime,
+    meetingLocation: initialData?.meetingLocation || orgAddress,
+    totalMembers: initialData?.totalMembers ?? totalMemberCount,
+    presentMembers: initialData?.presentMembers ?? totalMemberCount,
+    divanBaskanId: initialData?.divanBaskanId || '',
+    divanBaskanName: initialData?.divanBaskanName || '',
+    katipUye1Id: initialData?.katipUye1Id || '',
+    katipUye1Name: initialData?.katipUye1Name || '',
+    katipUye2Id: initialData?.katipUye2Id || '',
+    katipUye2Name: initialData?.katipUye2Name || '',
     openingText:
       initialData?.openingText ||
-      'Kurulu Başkanı Hüseyin ULUSAL tarafından açılmıştır. Açılışa müteakiben verilen önerge ile Divan Başkanlığına seçildiğim için teşekkür ederim.',
+      'Yönetim Kurulu Başkanı tarafından açılmıştır. Açılışa müteakiben verilen önerge ile Divan Başkanlığına seçildiğim için teşekkür ederim.',
     agendaItems: initialData?.agendaItems || [
       'Açılış ve Yoklama',
-      'Divanın Teşekkülü ve Başkanın Saygı duruşu',
-      'Yönetim Kurulu Raporunun ve Denetim Kurulu raporunun okunması müzakere ve ibrası',
-      'Yeni Yönetim Kurulunun Seçimi (Gizli Oy Açık Tasnif)',
-      'Dilek temenniler ve Kapanış (Adres Oylaması Açık oyla sunuldu ve oybirliği ile kabul edilmiştir)',
+      'Divanın Teşekkülü, Saygı Duruşu ve İstiklal Marşı',
+      'Yönetim Kurulu Faaliyet Raporunun, Mali Raporun ve Denetim Kurulu Raporunun okunması müzakere ve ibrası',
+      'Yeni Yönetim Kurulunun Seçimi (Gizli Oy, Açık Tasnif)',
+      'Dilek, Temenniler ve Kapanış',
     ],
-    yonetimAsil: initialData?.yonetimAsil || [
-      'Hüseyin ULUSAL',
-      'Muharrem TÜRK',
-      'Aydın HİCYILMAZ',
-      'Ali Rıza ULUSAL',
-      'Hüseyin KARADENİZ',
-    ],
-    yonetimYedek: initialData?.yonetimYedek || [
-      'İsa KÜSMENOĞLU',
-      'Ahmet SEÇİLMİŞ',
-      'Adem GÜZEY',
-      'Birol GEÇGİN',
-      'Mü lhan DURUOĞLU',
-    ],
-    denetimAsil: initialData?.denetimAsil || [
-      'Mahmut Cahit ÖZTÜRK',
-      'Tacettin AYDEMİR',
-      'Nusret ULUSAL',
-    ],
-    denetimYedek: initialData?.denetimYedek || [
-      'Kürşat ÇAYAN',
-      'Kemal GÜLER',
-      'Yusuf YILDIRIM',
-    ],
+    yonetimAsil: initialData?.yonetimAsil || [],
+    yonetimYedek: initialData?.yonetimYedek || [],
+    denetimAsil: initialData?.denetimAsil || [],
+    denetimYedek: initialData?.denetimYedek || [],
     closingText:
       initialData?.closingText ||
       'Gündemin son maddesi olan dilek ve temennilerde söz alan üyeler sonuçta yeni yönetim kuruluna başarılar diledikten sonra, toplantı aynı gün saat 14.45 de tarafımızca kapatılmıştır.',
   })
+
+  // Helper to handle member selection from dropdown
+  const handleMemberSelect = (
+    field: 'divanBaskan' | 'katipUye1' | 'katipUye2',
+    memberId: string
+  ) => {
+    const member = availableMembers.find((m) => m.id === memberId)
+    if (field === 'divanBaskan') {
+      setData((prev) => ({
+        ...prev,
+        divanBaskanId: memberId,
+        divanBaskanName: member?.name || '',
+      }))
+    } else if (field === 'katipUye1') {
+      setData((prev) => ({
+        ...prev,
+        katipUye1Id: memberId,
+        katipUye1Name: member?.name || '',
+      }))
+    } else if (field === 'katipUye2') {
+      setData((prev) => ({
+        ...prev,
+        katipUye2Id: memberId,
+        katipUye2Name: member?.name || '',
+      }))
+    }
+  }
 
   const updateField = (field: keyof GenelKurulData, value: any) => {
     setData((prev) => ({ ...prev, [field]: value }))
@@ -193,25 +236,52 @@ export function GenelKurulDivanEditor({ initialData, orgName }: Props) {
           <h3 className="font-semibold">Divan Üyeleri</h3>
           <div>
             <Label>Divan Başkanı</Label>
-            <Input
-              value={data.divanBaskan}
-              onChange={(e) => updateField('divanBaskan', e.target.value)}
-            />
+            <Select
+              value={data.divanBaskanId}
+              onChange={(e) =>
+                handleMemberSelect('divanBaskan', e.target.value)
+              }
+            >
+              <option value="">Üye seçiniz...</option>
+              {availableMembers.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </Select>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Katip Üye 1</Label>
-              <Input
-                value={data.katipUye1}
-                onChange={(e) => updateField('katipUye1', e.target.value)}
-              />
+              <Select
+                value={data.katipUye1Id}
+                onChange={(e) =>
+                  handleMemberSelect('katipUye1', e.target.value)
+                }
+              >
+                <option value="">Üye seçiniz...</option>
+                {availableMembers.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </Select>
             </div>
             <div>
               <Label>Katip Üye 2</Label>
-              <Input
-                value={data.katipUye2}
-                onChange={(e) => updateField('katipUye2', e.target.value)}
-              />
+              <Select
+                value={data.katipUye2Id}
+                onChange={(e) =>
+                  handleMemberSelect('katipUye2', e.target.value)
+                }
+              >
+                <option value="">Üye seçiniz...</option>
+                {availableMembers.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </Select>
             </div>
           </div>
         </CardContent>
@@ -407,7 +477,7 @@ export function GenelKurulDivanEditor({ initialData, orgName }: Props) {
           </div>
           <div
             ref={previewRef}
-            className="border rounded-lg px-16 py-8 bg-white dark:bg-gray-900 avoid-break"
+            className="border rounded-lg px-16 py-8 bg-white dark:bg-gray-900 avoid-break print:border-0"
           >
             <div className="text-center mb-6">
               <h2 className="text-xl font-bold mb-1">
@@ -422,18 +492,19 @@ export function GenelKurulDivanEditor({ initialData, orgName }: Props) {
               <p>
                 {orgName}&apos;nin {data.meetingDate} Günü saat{' '}
                 {data.meetingTime} {data.meetingLocation} adresinde yapılan
-                olağan Genel Kurul toplantısında sait çoğunluğun olduğu
+                olağan Genel Kurul toplantısında salt çoğunluğun olduğu
                 anlaşılıp ({data.totalMembers} Üyeden {data.presentMembers} Üye
                 bulundu) {data.openingText}
               </p>
 
               <div className="border-t pt-3">
                 <p className="font-semibold mb-2">
-                  Divan Başkanlığına: {data.divanBaskan}
+                  Divan Başkanlığına: {data.divanBaskanName || '(Seçilmedi)'}
                 </p>
                 <p>
-                  Katip Üyelikler ise: {data.katipUye1} ve {data.katipUye2}{' '}
-                  Genel Kurulca oybirliği ile seçildiler.
+                  Katip Üyelikler ise: {data.katipUye1Name || '(Seçilmedi)'} ve{' '}
+                  {data.katipUye2Name || '(Seçilmedi)'} Genel Kurulca oybirliği
+                  ile seçildiler.
                 </p>
               </div>
 
@@ -501,11 +572,15 @@ export function GenelKurulDivanEditor({ initialData, orgName }: Props) {
                 <p className="text-xs">{data.closingText}</p>
                 <div className="mt-4 flex justify-between items-end">
                   <div>
-                    <p className="text-xs">{data.katipUye1}</p>
+                    <p className="text-xs">
+                      {data.katipUye1Name || '(Seçilmedi)'}
+                    </p>
                     <p className="text-xs">Katip Üye</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs">{data.divanBaskan}</p>
+                    <p className="text-xs">
+                      {data.divanBaskanName || '(Seçilmedi)'}
+                    </p>
                     <p className="text-xs">Divan Başkanı</p>
                   </div>
                 </div>

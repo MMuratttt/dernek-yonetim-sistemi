@@ -83,7 +83,7 @@ export default async function UyelikBelgesiPage({
             <CardDescription>Belge bu şekilde oluşturulacaktır</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="border rounded-lg p-8 bg-white dark:bg-gray-900 min-h-[500px]">
+            <div className="border rounded-lg p-8 bg-white dark:bg-gray-900 min-h-[500px] print:border-0">
               <div className="text-center mb-8">
                 <h2 className="text-2xl font-bold mb-2">
                   {org?.name || 'DERNEK ADI'}

@@ -36,26 +36,41 @@ export function MaliRaporEditor({
   presidentName,
 }: Props) {
   const previewRef = useRef<HTMLDivElement>(null)
+
+  // Format current date as DD.MM.YYYY for default report date
+  const formatCurrentDate = () => {
+    const now = new Date()
+    const day = String(now.getDate()).padStart(2, '0')
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const year = now.getFullYear()
+    return `${day}.${month}.${year}`
+  }
+
+  // Generate default period as (currentYear-2)-currentYear
+  const getDefaultPeriod = () => {
+    const currentYear = new Date().getFullYear()
+    return `${currentYear - 2}-${currentYear}`
+  }
+
   const [data, setData] = useState<MaliRaporData>({
-    reportDate: initialData?.reportDate || '14.12.2025',
-    period: initialData?.period || '2023–2025',
+    reportDate: initialData?.reportDate || formatCurrentDate(),
+    period: initialData?.period || getDefaultPeriod(),
     presidentName: initialData?.presidentName || presidentName,
     gelirler: initialData?.gelirler || [
-      { description: 'Önceki yıldan devreden bakiye', amount: 252974.51 },
-      { description: 'Bağış ve kasa gelirleri', amount: 46602.01 },
-      { description: 'Finansal gelir', amount: 109423.49 },
-      { description: 'Kira gelirleri', amount: 71000 },
+      { description: 'Önceki yıldan devreden bakiye', amount: 0 },
+      { description: 'Bağış ve kasa gelirleri', amount: 0 },
+      { description: 'Finansal gelir', amount: 0 },
+      { description: 'Kira gelirleri', amount: 0 },
     ],
     giderler: initialData?.giderler || [
-      { description: 'Cami ve Kuran Kursu bakım-onarım giderleri', amount: 0 },
-      { description: 'Temizlik, elektrik, su ve ısınma giderleri', amount: 0 },
-      { description: 'Eğitim faaliyetleri için alınan malzemeler', amount: 0 },
-      { description: 'Bağış organizasyonları harcamaları', amount: 0 },
-      { description: 'Banka ve muhasebe işlemleri giderleri', amount: 0 },
+      { description: 'Personel ve yönetim giderleri', amount: 0 },
+      { description: 'Kira, elektrik, su ve ısınma giderleri', amount: 0 },
+      { description: 'Etkinlik ve organizasyon giderleri', amount: 0 },
+      { description: 'Diğer giderler', amount: 0 },
     ],
     closingText:
       initialData?.closingText ||
-      'Yukarıda özetlenen mali rapor, 2023-2025 dönemine ait gelir ve gider kalemlerini içermektedir. Tüm harcamalar dernek tüzüğü ve mevzuata uygun olarak gerçekleştirilmiştir.',
+      'Tüm harcamalar dernek tüzüğü ve mevzuata uygun olarak gerçekleştirilmiştir.',
   })
 
   const updateField = (field: keyof MaliRaporData, value: any) => {
@@ -132,7 +147,7 @@ export function MaliRaporEditor({
                 type="text"
                 value={data.reportDate}
                 onChange={(e) => updateField('reportDate', e.target.value)}
-                placeholder="14.12.2025"
+                placeholder="GG.AA.YYYY"
               />
             </div>
             <div>
@@ -320,7 +335,7 @@ export function MaliRaporEditor({
           </div>
           <div
             ref={previewRef}
-            className="border rounded-lg px-16 py-8 bg-white dark:bg-gray-900"
+            className="border rounded-lg px-16 py-8 bg-white dark:bg-gray-900 print:border-0"
           >
             <div className="text-center mb-6">
               <h2 className="text-xl font-bold mb-1">{orgName}</h2>
@@ -356,7 +371,7 @@ export function MaliRaporEditor({
 
               <div className="border-t pt-4">
                 <h4 className="font-semibold mb-3">GİDERLER</h4>
-                <div className="space-y-2 text-xs">
+                <div className="space-y-2 text-base">
                   {data.giderler.map((item, index) => (
                     <div key={index} className="flex justify-between">
                       <span>- {item.description}:</span>
@@ -402,7 +417,8 @@ export function MaliRaporEditor({
 
               <div className="border-t pt-4 mt-6">
                 <p className="text-xs leading-relaxed mb-4">
-                  {data.closingText}
+                  Yukarıda özetlenen mali rapor, {data.period} dönemine ait
+                  gelir ve gider kalemlerini içermektedir. {data.closingText}
                 </p>
                 <div className="text-right">
                   <p className="text-xs mb-1">Saygılarımızla,</p>

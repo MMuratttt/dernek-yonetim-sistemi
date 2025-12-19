@@ -8,6 +8,10 @@ import { isSuperAdmin } from '../../../lib/authz'
 import { normalizePhoneNumber } from '../../../lib/utils'
 import { uploadFile } from '../../../lib/storage'
 
+// Regex pattern for website validation (with or without protocol)
+const websitePattern =
+  /^(https?:\/\/)?(www\.)?[a-zA-Z0-9][-a-zA-Z0-9]*(\.[a-zA-Z0-9][-a-zA-Z0-9]*)+\/?.*$/
+
 const CreateOrg = z.object({
   name: z.string().min(3),
   responsibleFirstName: z.string().min(2),
@@ -34,7 +38,7 @@ const CreateOrg = z.object({
   ),
   website: z.preprocess(
     (val) => (!val || val === '' ? undefined : val),
-    z.string().url().optional()
+    z.string().regex(websitePattern).optional()
   ),
 })
 

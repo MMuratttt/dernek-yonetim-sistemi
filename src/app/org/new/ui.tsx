@@ -10,6 +10,10 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/components/ui/toast'
 
+// Regex pattern for website validation (with or without protocol)
+const websitePattern =
+  /^(https?:\/\/)?(www\.)?[a-zA-Z0-9][-a-zA-Z0-9]*(\.[a-zA-Z0-9][-a-zA-Z0-9]*)+\/?.*$/
+
 const schema = z.object({
   name: z.string().min(3, 'En az 3 karakter'),
   responsibleFirstName: z.string().min(2, 'En az 2 karakter'),
@@ -23,7 +27,11 @@ const schema = z.object({
     .or(z.literal('')),
   phone: z.string().optional(),
   address: z.string().optional(),
-  website: z.string().url('Geçerli URL girin').optional().or(z.literal('')),
+  website: z
+    .string()
+    .regex(websitePattern, 'Geçerli web adresi girin')
+    .optional()
+    .or(z.literal('')),
 })
 
 type FormValues = z.infer<typeof schema>
