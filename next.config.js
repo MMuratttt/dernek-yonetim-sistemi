@@ -11,11 +11,14 @@ const nextConfig = {
     remotePatterns: [
       { protocol: 'https', hostname: '**' },
       { protocol: 'http', hostname: '**' },
+      // Vercel Blob Storage
+      { protocol: 'https', hostname: '*.public.blob.vercel-storage.com' },
+      { protocol: 'https', hostname: '*.blob.vercel-storage.com' },
     ],
   },
   experimental: {
-    optimizePackageImports: ['lucide-react']
-  }
-};
+    optimizePackageImports: ['lucide-react'],
+  },
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig
