@@ -1,15 +1,22 @@
 'use client'
 
 import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Select } from '@/components/ui/select'
+import { Select } from '@/components/ui/select'
 import { Plus, X, Download } from 'lucide-react'
 import { downloadServerPdf } from '@/lib/serverPdf'
 import { TurkishPDFGenerator } from '@/lib/pdfGenerator'
+
+interface MemberOption {
+  id: string
+  name: string
+}
 
 interface MemberOption {
   id: string
@@ -108,7 +115,15 @@ export function GenelKurulDivanEditor({
       'Yönetim Kurulu Faaliyet Raporunun, Mali Raporun ve Denetim Kurulu Raporunun okunması müzakere ve ibrası',
       'Yeni Yönetim Kurulunun Seçimi (Gizli Oy, Açık Tasnif)',
       'Dilek, Temenniler ve Kapanış',
+      'Divanın Teşekkülü, Saygı Duruşu ve İstiklal Marşı',
+      'Yönetim Kurulu Faaliyet Raporunun, Mali Raporun ve Denetim Kurulu Raporunun okunması müzakere ve ibrası',
+      'Yeni Yönetim Kurulunun Seçimi (Gizli Oy, Açık Tasnif)',
+      'Dilek, Temenniler ve Kapanış',
     ],
+    yonetimAsil: initialData?.yonetimAsil || [],
+    yonetimYedek: initialData?.yonetimYedek || [],
+    denetimAsil: initialData?.denetimAsil || [],
+    denetimYedek: initialData?.denetimYedek || [],
     yonetimAsil: initialData?.yonetimAsil || [],
     yonetimYedek: initialData?.yonetimYedek || [],
     denetimAsil: initialData?.denetimAsil || [],
@@ -117,6 +132,33 @@ export function GenelKurulDivanEditor({
       initialData?.closingText ||
       'Gündemin son maddesi olan dilek ve temennilerde söz alan üyeler sonuçta yeni yönetim kuruluna başarılar diledikten sonra, toplantı aynı gün saat {{endTime}} de tarafımızca kapatılmıştır. İş bu Divan Tutanağı müştereken imza altına alınmıştır.',
   })
+
+  // Helper to handle member selection from dropdown
+  const handleMemberSelect = (
+    field: 'divanBaskan' | 'katipUye1' | 'katipUye2',
+    memberId: string
+  ) => {
+    const member = availableMembers.find((m) => m.id === memberId)
+    if (field === 'divanBaskan') {
+      setData((prev) => ({
+        ...prev,
+        divanBaskanId: memberId,
+        divanBaskanName: member?.name || '',
+      }))
+    } else if (field === 'katipUye1') {
+      setData((prev) => ({
+        ...prev,
+        katipUye1Id: memberId,
+        katipUye1Name: member?.name || '',
+      }))
+    } else if (field === 'katipUye2') {
+      setData((prev) => ({
+        ...prev,
+        katipUye2Id: memberId,
+        katipUye2Name: member?.name || '',
+      }))
+    }
+  }
 
   // Helper to handle member selection from dropdown
   const handleMemberSelect = (
@@ -265,6 +307,19 @@ export function GenelKurulDivanEditor({
                 </option>
               ))}
             </Select>
+            <Select
+              value={data.divanBaskanId}
+              onChange={(e) =>
+                handleMemberSelect('divanBaskan', e.target.value)
+              }
+            >
+              <option value="">Üye seçiniz...</option>
+              {availableMembers.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </Select>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -282,9 +337,35 @@ export function GenelKurulDivanEditor({
                   </option>
                 ))}
               </Select>
+              <Select
+                value={data.katipUye1Id}
+                onChange={(e) =>
+                  handleMemberSelect('katipUye1', e.target.value)
+                }
+              >
+                <option value="">Üye seçiniz...</option>
+                {availableMembers.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </Select>
             </div>
             <div>
               <Label>Katip Üye 2</Label>
+              <Select
+                value={data.katipUye2Id}
+                onChange={(e) =>
+                  handleMemberSelect('katipUye2', e.target.value)
+                }
+              >
+                <option value="">Üye seçiniz...</option>
+                {availableMembers.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </Select>
               <Select
                 value={data.katipUye2Id}
                 onChange={(e) =>
@@ -558,6 +639,7 @@ export function GenelKurulDivanEditor({
           <div
             ref={previewRef}
             className="border rounded-lg px-16 py-8 bg-white dark:bg-gray-900 avoid-break print:border-0"
+            className="border rounded-lg px-16 py-8 bg-white dark:bg-gray-900 avoid-break print:border-0"
           >
             <div className="text-center mb-6">
               <h2 className="text-xl font-bold mb-1">
@@ -573,6 +655,7 @@ export function GenelKurulDivanEditor({
                 {orgName}&apos;nin {data.meetingDate} Günü saat{' '}
                 {data.meetingTime} {data.meetingLocation} adresinde yapılan
                 olağan Genel Kurul toplantısında salt çoğunluğun olduğu
+                olağan Genel Kurul toplantısında salt çoğunluğun olduğu
                 anlaşılıp ({data.totalMembers} Üyeden {data.presentMembers} Üye
                 bulundu) toplantı, Yönetim Kurulu Başkanı{' '}
                 {yonetimKuruluBaskani?.name || '(Tanımlı değil)'} tarafından
@@ -581,6 +664,7 @@ export function GenelKurulDivanEditor({
 
               <div className="border-t pt-3">
                 <p className="font-semibold mb-2">
+                  Divan Başkanlığına: {data.divanBaskanName || '(Seçilmedi)'}
                   Divan Başkanlığına: {data.divanBaskanName || '(Seçilmedi)'}
                 </p>
                 <p>
