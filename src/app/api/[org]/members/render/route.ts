@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { prisma } from '../../../../../lib/prisma'
 import { getSession } from '../../../../../lib/auth'
 import { ensureOrgAccessBySlug } from '../../../../../lib/authz'
+import { generatePDFFromHTML } from '../../../../../lib/browser'
 
 export const runtime = 'nodejs'
 
@@ -216,24 +217,16 @@ export async function POST(
   } else {
     const { default: Mustache } = await import('mustache')
     const html = Mustache.render(tpl.content, data)
-    const { chromium } = await import('playwright')
-    const browser = await chromium.launch()
-    try {
-      const page = await browser.newPage()
-      await page.setContent(html, { waitUntil: 'networkidle' })
-      const pdf = await page.pdf({
-        format: 'A4',
-        printBackground: true,
-        margin: { top: '15mm', right: '12mm', bottom: '15mm', left: '12mm' },
-      })
-      return new NextResponse(new Uint8Array(pdf), {
-        headers: {
-          'Content-Type': 'application/pdf',
-          'Content-Disposition': `attachment; filename="${tpl.slug}-${data.date}.pdf"`,
-        },
-      })
-    } finally {
-      await browser.close()
-    }
+    const pdf = await generatePDFFromHTML(html, {
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '15mm', right: '12mm', bottom: '15mm', left: '12mm' },
+    })
+    return new NextResponse(new Uint8Array(pdf), {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${tpl.slug}-${data.date}.pdf"`,
+      },
+    })
   }
 }

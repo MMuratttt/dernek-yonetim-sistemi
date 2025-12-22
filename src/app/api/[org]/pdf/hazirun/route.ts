@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { getSession } from '../../../../../lib/auth'
 import { ensureOrgAccessBySlug } from '../../../../../lib/authz'
+import { generatePDFFromHTML } from '../../../../../lib/browser'
 
 export const runtime = 'nodejs'
 
@@ -60,20 +61,11 @@ async function generateHazirunPDF(
     </div>
   </body></html>`
 
-  const { chromium } = await import('playwright')
-  const browser = await chromium.launch()
-  try {
-    const page = await browser.newPage()
-    await page.setContent(html, { waitUntil: 'networkidle' })
-    const pdf = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: { top: '20mm', right: '12mm', bottom: '20mm', left: '12mm' },
-    })
-    return pdf
-  } finally {
-    await browser.close()
-  }
+  return generatePDFFromHTML(html, {
+    format: 'A4',
+    printBackground: true,
+    margin: { top: '20mm', right: '12mm', bottom: '20mm', left: '12mm' },
+  })
 }
 
 export async function GET(
@@ -123,9 +115,7 @@ export async function GET(
   }
 
   const pdf = await generateHazirunPDF(members, access.org.name, presidentName)
-  const bytes = new Uint8Array(pdf)
-  const blob = new Blob([bytes], { type: 'application/pdf' })
-  return new NextResponse(blob, {
+  return new NextResponse(new Uint8Array(pdf), {
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="hazirun-${new Date().toISOString().slice(0, 10)}.pdf"`,
@@ -188,9 +178,7 @@ export async function POST(
   }
 
   const pdf = await generateHazirunPDF(members, access.org.name, presidentName)
-  const bytes = new Uint8Array(pdf)
-  const blob = new Blob([bytes], { type: 'application/pdf' })
-  return new NextResponse(blob, {
+  return new NextResponse(new Uint8Array(pdf), {
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="hazirun-${new Date().toISOString().slice(0, 10)}.pdf"`,

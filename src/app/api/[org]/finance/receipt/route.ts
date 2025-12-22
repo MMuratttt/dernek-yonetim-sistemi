@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { ensureOrgAccessBySlug } from '@/lib/authz'
+import { generatePDFFromHTML } from '@/lib/browser'
 
 export const runtime = 'nodejs'
 
@@ -61,25 +62,15 @@ export async function GET(
     ${txn.note ? `<p>Not: ${txn.note}</p>` : ''}
   </body></html>`
 
-  const { chromium } = await import('playwright')
-  const browser = await chromium.launch()
-  try {
-    const page = await browser.newPage()
-    await page.setContent(html, { waitUntil: 'networkidle' })
-    const pdf = await page.pdf({
-      format: 'A5',
-      printBackground: true,
-      margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' },
-    })
-    const bytes = new Uint8Array(pdf)
-    const blob = new Blob([bytes], { type: 'application/pdf' })
-    return new NextResponse(blob, {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="makbuz-${id}.pdf"`,
-      },
-    })
-  } finally {
-    await browser.close()
-  }
+  const pdf = await generatePDFFromHTML(html, {
+    format: 'A5',
+    printBackground: true,
+    margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' },
+  })
+  return new NextResponse(new Uint8Array(pdf), {
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="makbuz-${id}.pdf"`,
+    },
+  })
 }
