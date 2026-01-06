@@ -3,6 +3,7 @@ import { prisma } from '../../../../../lib/prisma'
 import { getSession } from '../../../../../lib/auth'
 import { ensureOrgAccessBySlug } from '../../../../../lib/authz'
 import { generatePDFFromHTML } from '../../../../../lib/browser'
+import { getBoardPresident } from '../../../../../lib/boardSync'
 
 export const runtime = 'nodejs'
 
@@ -90,29 +91,11 @@ export async function GET(
     take,
   })
 
-  // Fetch current board president
-  const currentTerm = await prisma.boardTerm.findFirst({
-    where: {
-      boardId: access.org.boardId,
-      isActive: true,
-    },
-  })
-
-  let presidentName: string | null = null
-  if (currentTerm) {
-    const president = await prisma.boardMember.findFirst({
-      where: {
-        termId: currentTerm.id,
-        role: 'PRESIDENT',
-      },
-      include: {
-        member: true,
-      },
-    })
-    if (president) {
-      presidentName = `${president.member.firstName} ${president.member.lastName}`
-    }
-  }
+  // Fetch current board president (with fallback to member title)
+  const president = await getBoardPresident(prisma, access.org.id)
+  const presidentName = president
+    ? `${president.firstName} ${president.lastName}`
+    : null
 
   const pdf = await generateHazirunPDF(members, access.org.name, presidentName)
   return new NextResponse(new Uint8Array(pdf), {
@@ -153,31 +136,17 @@ export async function POST(
     orderBy: { lastName: 'asc' },
   })
 
-  // Fetch current board president
-  const currentTerm = await prisma.boardTerm.findFirst({
-    where: {
-      boardId: access.org.boardId,
-      isActive: true,
-    },
-  })
+  // Fetch current board president (with fallback to member title)
+  const presidentPost = await getBoardPresident(prisma, access.org.id)
+  const presidentNamePost = presidentPost
+    ? `${presidentPost.firstName} ${presidentPost.lastName}`
+    : null
 
-  let presidentName: string | null = null
-  if (currentTerm) {
-    const president = await prisma.boardMember.findFirst({
-      where: {
-        termId: currentTerm.id,
-        role: 'PRESIDENT',
-      },
-      include: {
-        member: true,
-      },
-    })
-    if (president) {
-      presidentName = `${president.member.firstName} ${president.member.lastName}`
-    }
-  }
-
-  const pdf = await generateHazirunPDF(members, access.org.name, presidentName)
+  const pdf = await generateHazirunPDF(
+    members,
+    access.org.name,
+    presidentNamePost
+  )
   return new NextResponse(new Uint8Array(pdf), {
     headers: {
       'Content-Type': 'application/pdf',

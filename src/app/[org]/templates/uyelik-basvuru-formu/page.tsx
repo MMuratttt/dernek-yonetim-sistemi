@@ -1,6 +1,7 @@
 import { getSession } from '../../../../lib/auth'
 import { ensureOrgAccessBySlug } from '../../../../lib/authz'
 import { prisma } from '../../../../lib/prisma'
+import { getBoardPresident } from '../../../../lib/boardSync'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
@@ -30,50 +31,11 @@ export default async function UyelikBasvuruFormuPage({
     },
   })
 
-  // Get current board chairman
-  const executiveBoard = await prisma.board.findFirst({
-    where: {
-      organizationId: access.org.id,
-      type: 'EXECUTIVE',
-    },
-    select: {
-      id: true,
-    },
-  })
-
-  let chairmanName: string | null = null
-  if (executiveBoard) {
-    const currentTerm = await prisma.boardTerm.findFirst({
-      where: {
-        boardId: executiveBoard.id,
-        isActive: true,
-      },
-      select: {
-        id: true,
-      },
-    })
-
-    if (currentTerm) {
-      const chairman = await prisma.boardMember.findFirst({
-        where: {
-          termId: currentTerm.id,
-          role: 'PRESIDENT',
-        },
-        include: {
-          member: {
-            select: {
-              firstName: true,
-              lastName: true,
-            },
-          },
-        },
-      })
-
-      if (chairman?.member) {
-        chairmanName = `${chairman.member.firstName} ${chairman.member.lastName}`
-      }
-    }
-  }
+  // Get current board chairman (with fallback to member title)
+  const president = await getBoardPresident(prisma, access.org.id)
+  const chairmanName = president
+    ? `${president.firstName} ${president.lastName}`
+    : null
 
   return (
     <div>

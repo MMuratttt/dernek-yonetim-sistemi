@@ -270,6 +270,66 @@ export async function syncBoardMemberRemoval(
 }
 
 /**
+ * Get the board president (Yönetim Kurulu Başkanı) for an organization.
+ * First tries to find a BoardMember with PRESIDENT role in the active EXECUTIVE term.
+ * Falls back to finding a Member with title 'BASKAN' if no BoardMember found.
+ */
+export async function getBoardPresident(
+  prisma: any,
+  organizationId: string
+): Promise<{ id: string; firstName: string; lastName: string } | null> {
+  // First, try to find in BoardMember with active term
+  const presidentFromBoard = await prisma.boardMember.findFirst({
+    where: {
+      term: {
+        board: {
+          organizationId,
+          type: 'EXECUTIVE',
+        },
+        isActive: true,
+      },
+      role: 'PRESIDENT',
+    },
+    include: {
+      member: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  })
+
+  if (presidentFromBoard?.member) {
+    return {
+      id: presidentFromBoard.member.id,
+      firstName: presidentFromBoard.member.firstName,
+      lastName: presidentFromBoard.member.lastName,
+    }
+  }
+
+  // Fallback: find member with title 'BASKAN'
+  const presidentFromTitle = await prisma.member.findFirst({
+    where: {
+      organizationId,
+      title: 'BASKAN',
+      status: 'ACTIVE',
+    },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+    },
+  })
+
+  return presidentFromTitle
+}
+
+/**
  * Validate that assigning a role won't conflict with existing assignments
  */
 export async function validateBoardRoleAssignment(
