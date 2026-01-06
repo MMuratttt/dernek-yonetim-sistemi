@@ -3,6 +3,7 @@ import { prisma } from '../../../../../../lib/prisma'
 import { getSession } from '../../../../../../lib/auth'
 import { ensureOrgAccessBySlug } from '../../../../../../lib/authz'
 import { generatePDFFromHTML } from '../../../../../../lib/browser'
+import { getBoardPresident } from '../../../../../../lib/boardSync'
 
 export const runtime = 'nodejs'
 
@@ -198,37 +199,8 @@ export async function GET(
     return NextResponse.json({ error: 'Dernek bulunamadı' }, { status: 404 })
   }
 
-  // Fetch board president
-  const presidentRecord = await prisma.boardMember.findFirst({
-    where: {
-      term: {
-        board: {
-          organizationId: access.org.id,
-          type: 'EXECUTIVE',
-        },
-        isActive: true,
-      },
-      role: 'PRESIDENT',
-    },
-    include: {
-      member: {
-        select: {
-          firstName: true,
-          lastName: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  })
-
-  const president = presidentRecord
-    ? {
-        firstName: presidentRecord.member.firstName,
-        lastName: presidentRecord.member.lastName,
-      }
-    : null
+  // Fetch board president (with fallback to member title)
+  const president = await getBoardPresident(prisma, access.org.id)
 
   const pdf = await generateMembershipCertificatePDF(
     organization,

@@ -1,6 +1,7 @@
 import { getSession } from '../../../../lib/auth'
 import { ensureOrgAccessBySlug } from '../../../../lib/authz'
 import { prisma } from '../../../../lib/prisma'
+import { getBoardPresident } from '../../../../lib/boardSync'
 import {
   Card,
   CardContent,
@@ -31,33 +32,11 @@ export default async function MaliRaporPage({ params: paramsPromise }: any) {
     },
   })
 
-  // Get board president
-  const president = await prisma.boardMember.findFirst({
-    where: {
-      term: {
-        board: {
-          organizationId: access.org.id,
-          type: 'EXECUTIVE',
-        },
-        isActive: true,
-      },
-      role: 'PRESIDENT',
-    },
-    include: {
-      member: {
-        select: {
-          firstName: true,
-          lastName: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  })
+  // Get board president (with fallback to member title)
+  const president = await getBoardPresident(prisma, access.org.id)
 
   const presidentName = president
-    ? `${president.member.firstName} ${president.member.lastName}`
+    ? `${president.firstName} ${president.lastName}`
     : 'Başkan atanmamış'
 
   return (

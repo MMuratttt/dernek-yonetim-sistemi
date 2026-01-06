@@ -1,6 +1,7 @@
 import { getSession } from '../../../../lib/auth'
 import { ensureOrgAccessBySlug } from '../../../../lib/authz'
 import { prisma } from '../../../../lib/prisma'
+import { getBoardPresident } from '../../../../lib/boardSync'
 import {
   Card,
   CardContent,
@@ -34,30 +35,8 @@ export default async function UyelikBelgesiPage({
     },
   })
 
-  // Get board president (Yönetim Kurulu Başkanı)
-  const president = await prisma.boardMember.findFirst({
-    where: {
-      term: {
-        board: {
-          organizationId: access.org.id,
-          type: 'EXECUTIVE',
-        },
-        isActive: true,
-      },
-      role: 'PRESIDENT',
-    },
-    include: {
-      member: {
-        select: {
-          firstName: true,
-          lastName: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  })
+  // Get board president (with fallback to member title)
+  const president = await getBoardPresident(prisma, access.org.id)
 
   return (
     <div>
@@ -131,7 +110,7 @@ export default async function UyelikBelgesiPage({
                     <p className="mb-1">Yönetim Kurulu Başkanı</p>
                     <p className="font-semibold">
                       {president
-                        ? `${president.member.firstName} ${president.member.lastName}`
+                        ? `${president.firstName} ${president.lastName}`
                         : '[Başkan adı]'}
                     </p>
                     <p className="text-xs text-muted-foreground mt-2">İmza</p>
@@ -197,7 +176,7 @@ export default async function UyelikBelgesiPage({
                     </span>
                   </p>
                   <p className="text-lg font-semibold text-primary">
-                    {president.member.firstName} {president.member.lastName}
+                    {president.firstName} {president.lastName}
                   </p>
                 </div>
               </CardContent>

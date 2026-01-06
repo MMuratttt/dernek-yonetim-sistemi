@@ -1,6 +1,7 @@
 import { getSession } from '../../../../lib/auth'
 import { ensureOrgAccessBySlug } from '../../../../lib/authz'
 import { prisma } from '../../../../lib/prisma'
+import { getBoardPresident } from '../../../../lib/boardSync'
 import {
   Card,
   CardContent,
@@ -61,28 +62,11 @@ export default async function GenelKurulDivanTutanagiPage({
     name: `${m.firstName} ${m.lastName}`,
   }))
 
-  // Get the current "Yönetim Kurulu Başkanı" from the active term
-  const yonetimKuruluBaskani = await prisma.boardMember.findFirst({
-    where: {
-      role: 'PRESIDENT',
-      term: {
-        isActive: true,
-        board: {
-          organizationId: access.org.id,
-          type: 'EXECUTIVE',
-        },
-      },
-    },
-    select: {
-      memberId: true,
-      member: {
-        select: {
-          firstName: true,
-          lastName: true,
-        },
-      },
-    },
-  })
+  // Get the current "Yönetim Kurulu Başkanı" (with fallback to member title)
+  const president = await getBoardPresident(prisma, access.org.id)
+  const yonetimKuruluBaskani = president
+    ? { id: president.id, name: `${president.firstName} ${president.lastName}` }
+    : undefined
 
   return (
     <div>
@@ -105,14 +89,7 @@ export default async function GenelKurulDivanTutanagiPage({
         orgAddress={org?.address || ''}
         totalMemberCount={totalMemberCount}
         availableMembers={availableMembers}
-        yonetimKuruluBaskani={
-          yonetimKuruluBaskani
-            ? {
-                id: yonetimKuruluBaskani.memberId,
-                name: `${yonetimKuruluBaskani.member.firstName} ${yonetimKuruluBaskani.member.lastName}`,
-              }
-            : undefined
-        }
+        yonetimKuruluBaskani={yonetimKuruluBaskani}
       />
 
       <div className="grid grid-cols-1 gap-6 mt-6">
