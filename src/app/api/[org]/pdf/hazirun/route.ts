@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '../../../../../lib/prisma'
 import { getSession } from '../../../../../lib/auth'
 import { ensureOrgAccessBySlug } from '../../../../../lib/authz'
+import { generatePDFFromHTML } from '../../../../../lib/browser'
 
 export const runtime = 'nodejs'
 
@@ -30,45 +31,41 @@ async function generateHazirunPDF(
   <html><head><meta charset="utf-8" />
   <style>
     body { font-family: Arial, sans-serif; font-size: 12px; }
-    h1 { font-size: 16px; text-align: center; }
+    h1 { font-size: 18px; text-align: center; margin-bottom: 20px; }
     table { width: 100%; border-collapse: collapse; }
-    th, td { border: 1px solid #444; padding: 6px; }
-    th { background: #f0f0f0; }
-    .footer { margin-top: 20px; text-align: center; font-weight: bold; font-size: 14px; }
-    .signature { margin-top: 40px; text-align: right; padding-right: 50px; }
-    .signature-content { display: inline-block; min-width: 200px; text-align: center; }
+    th, td { border: 1px solid #444; padding: 8px; }
+    th { background: #f0f0f0; font-weight: bold; }
+    td:first-child { text-align: center; width: 40px; }
+    td:nth-child(3) { width: 120px; }
+    td:nth-child(4) { width: 100px; }
+    .footer { margin-top: 30px; text-align: center; font-weight: bold; font-size: 12px; letter-spacing: 1px; }
+    .signature { margin-top: 60px; text-align: right; padding-right: 50px; }
+    .signature-content { display: inline-block; min-width: 220px; text-align: center; }
+    .signature-line { border-top: 1px solid #000; margin-top: 50px; padding-top: 8px; }
   </style>
   </head><body>
-    <h1>${orgName} HAZİRUN LİSTESİ</h1>
+    <h1>${orgName} Hazirun Listesi</h1>
     <table>
       <thead><tr><th>#</th><th>Ad Soyad</th><th>TC</th><th>İmza</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    <div class="footer">//////// İŞ BU HAZİRUN LİSTESİ ${count} KİŞİDEN OLUŞMAKTADIR ////////</div>
+    <div class="footer">//////////// İŞ BU HAZİRUN LİSTESİ ${count} KİŞİDEN OLUŞMAKTADIR ////////////</div>
     <div class="signature">
-      <div style="margin-bottom: 60px;"></div>
       <div class="signature-content">
-        ${presidentName || ''}<br/>
-        Yönetim Kurulu Başkanı<br/>
-        ${today}
+        <div class="signature-line">
+          ${presidentName || ''}<br/>
+          Yönetim Kurulu Başkanı
+        </div>
+        <div style="margin-top: 10px; font-size: 11px; color: #666;">${today}</div>
       </div>
     </div>
   </body></html>`
 
-  const { chromium } = await import('playwright')
-  const browser = await chromium.launch()
-  try {
-    const page = await browser.newPage()
-    await page.setContent(html, { waitUntil: 'networkidle' })
-    const pdf = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: { top: '20mm', right: '12mm', bottom: '20mm', left: '12mm' },
-    })
-    return pdf
-  } finally {
-    await browser.close()
-  }
+  return generatePDFFromHTML(html, {
+    format: 'A4',
+    printBackground: true,
+    margin: { top: '20mm', right: '12mm', bottom: '20mm', left: '12mm' },
+  })
 }
 
 export async function GET(
@@ -118,9 +115,7 @@ export async function GET(
   }
 
   const pdf = await generateHazirunPDF(members, access.org.name, presidentName)
-  const bytes = new Uint8Array(pdf)
-  const blob = new Blob([bytes], { type: 'application/pdf' })
-  return new NextResponse(blob, {
+  return new NextResponse(new Uint8Array(pdf), {
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="hazirun-${new Date().toISOString().slice(0, 10)}.pdf"`,
@@ -183,9 +178,7 @@ export async function POST(
   }
 
   const pdf = await generateHazirunPDF(members, access.org.name, presidentName)
-  const bytes = new Uint8Array(pdf)
-  const blob = new Blob([bytes], { type: 'application/pdf' })
-  return new NextResponse(blob, {
+  return new NextResponse(new Uint8Array(pdf), {
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="hazirun-${new Date().toISOString().slice(0, 10)}.pdf"`,
