@@ -16,6 +16,23 @@ export async function isSuperAdmin(userId: string): Promise<boolean> {
   return Boolean(superMembership)
 }
 
+/**
+ * Check if a user can create an organization.
+ * Returns true if:
+ * 1. The user is a SUPERADMIN, OR
+ * 2. There are NO organizations in the system (first org setup)
+ */
+export async function canCreateOrg(userId: string): Promise<boolean> {
+  if (!userId) return false
+
+  // SUPERADMINs can always create orgs
+  if (await isSuperAdmin(userId)) return true
+
+  // Allow creating first org if no orgs exist
+  const totalOrgs = await prisma.organization.count()
+  return totalOrgs === 0
+}
+
 export async function getUserOrgRole(
   userId: string,
   orgSlug: string

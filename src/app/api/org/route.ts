@@ -4,7 +4,7 @@ import { z } from 'zod'
 import bcrypt from 'bcrypt'
 import { prisma } from '../../../lib/prisma'
 import { getSession } from '../../../lib/auth'
-import { isSuperAdmin } from '../../../lib/authz'
+import { isSuperAdmin, canCreateOrg } from '../../../lib/authz'
 import { normalizePhoneNumber } from '../../../lib/utils'
 import { uploadFile } from '../../../lib/storage'
 
@@ -72,9 +72,9 @@ export async function POST(req: Request) {
   if (!session?.user?.id)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Only SUPERADMIN can create organizations in this phase
-  const canCreate = await isSuperAdmin(session.user.id)
-  if (!canCreate)
+  // SUPERADMINs or first user (when no orgs exist) can create organizations
+  const isAllowed = await canCreateOrg(session.user.id)
+  if (!isAllowed)
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   try {

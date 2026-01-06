@@ -2,7 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import NewOrganizationForm from '@/app/org/new/ui'
-import { isSuperAdmin } from '@/lib/authz'
+import { canCreateOrg } from '@/lib/authz'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 
@@ -10,9 +10,9 @@ export default async function NewOrganizationPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect('/auth/signin')
 
-  // Only superadmins can access this page in this phase
-  const isSuper = await isSuperAdmin(session.user.id)
-  if (!isSuper) redirect('/org')
+  // Only users who can create orgs (superadmins or first user) can access this page
+  const canCreate = await canCreateOrg(session.user.id)
+  if (!canCreate) redirect('/org')
 
   return (
     <main className="min-h-screen">
@@ -108,9 +108,8 @@ export default async function NewOrganizationPage() {
                 Bilgi
               </p>
               <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                Sadece süper yönetici rolüne sahip kullanıcılar yeni dernek
-                oluşturabilir. Dernek yöneticisi için şifre belirlediğinizde,
-                e-posta ve şifre bilgileri otomatik olarak derneğe kaydedilir.
+                Dernek yöneticisi için şifre belirlediğinizde, e-posta ve şifre
+                bilgileri otomatik olarak derneğe kaydedilir.
               </p>
             </div>
           </div>

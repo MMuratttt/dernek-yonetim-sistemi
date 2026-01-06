@@ -19,9 +19,14 @@ async function getOrgs(userId: string) {
       orderBy: { createdAt: 'desc' },
       include: { _count: { select: { members: true } } },
     })) as any[]
-    return { items, isSuperAdmin: Boolean(superadmin) }
+
+    // Allow creating first org if there are no organizations at all
+    const totalOrgsCount = await prisma.organization.count()
+    const canCreateOrg = Boolean(superadmin) || totalOrgsCount === 0
+
+    return { items, isSuperAdmin: Boolean(superadmin), canCreateOrg }
   } catch {
-    return { items: [], isSuperAdmin: false }
+    return { items: [], isSuperAdmin: false, canCreateOrg: false }
   }
 }
 
@@ -78,7 +83,7 @@ export default async function OrgsPage() {
     )
   }
 
-  const { items, isSuperAdmin } = await getOrgs(session.user.id)
+  const { items, isSuperAdmin, canCreateOrg } = await getOrgs(session.user.id)
 
   // If user is admin (not superadmin) and has exactly one org, redirect directly to it
   if (!isSuperAdmin && items.length === 1) {
@@ -254,11 +259,11 @@ export default async function OrgsPage() {
               </div>
               <h3 className="text-xl font-semibold mb-2">Henüz dernek yok</h3>
               <p className="text-muted-foreground max-w-sm mx-auto mb-6">
-                {isSuperAdmin
+                {canCreateOrg
                   ? 'Başlamak için yeni bir dernek oluşturun ve üyelerinizi yönetmeye başlayın.'
                   : 'Bir süper yöneticinin sizi bir derneğe eklemesini bekleyin.'}
               </p>
-              {isSuperAdmin && (
+              {canCreateOrg && (
                 <Link
                   href="/org/new"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold hover:from-amber-600 hover:to-orange-700 transition-all shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40"
@@ -382,8 +387,8 @@ export default async function OrgsPage() {
               </Card>
             ))}
 
-            {/* Add New Org Card for SuperAdmins */}
-            {isSuperAdmin && (
+            {/* Add New Org Card */}
+            {canCreateOrg && (
               <Link href="/org/new" className="block">
                 <Card className="h-full border-dashed border-2 hover:border-amber-400 dark:hover:border-amber-600 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-all duration-300 group cursor-pointer">
                   <CardContent className="p-6 h-full flex flex-col items-center justify-center text-center min-h-[200px]">
