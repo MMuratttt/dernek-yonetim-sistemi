@@ -214,44 +214,51 @@ export async function PATCH(
     }
 
     // Process the debit by creating finance transactions
-    await prisma.$transaction(async (tx) => {
-      // Update scheduled debit status
-      await (tx as any).scheduledDebit.update({
-        where: { id: data.id },
-        data: {
-          status: 'PROCESSING',
-        },
-      })
-
-      // Create finance transactions for each member
-      for (const member of scheduledDebit.members) {
-        await (tx as any).financeTransaction.create({
+    // Using extended timeout for large batches (44+ members)
+    await prisma.$transaction(
+      async (tx) => {
+        // Update scheduled debit status
+        await (tx as any).scheduledDebit.update({
+          where: { id: data.id },
           data: {
-            organizationId: access.org.id,
-            memberId: member.memberId,
-            type: 'CHARGE',
-            amount: member.amount,
-            currency: member.currency,
-            note: `Toplu borçlandırma - ${scheduledDebit.debitType}${scheduledDebit.year ? ` (${scheduledDebit.year})` : ''}`,
-            txnDate: scheduledDebit.scheduledDate || new Date(),
+            status: 'PROCESSING',
           },
         })
 
-        await (tx as any).scheduledDebitMember.update({
-          where: { id: member.id },
-          data: { status: 'COMPLETED' },
-        })
-      }
+        // Create finance transactions for each member
+        for (const member of scheduledDebit.members) {
+          await (tx as any).financeTransaction.create({
+            data: {
+              organizationId: access.org.id,
+              memberId: member.memberId,
+              type: 'CHARGE',
+              amount: member.amount,
+              currency: member.currency,
+              note: `Toplu borçlandırma - ${scheduledDebit.debitType}${scheduledDebit.year ? ` (${scheduledDebit.year})` : ''}`,
+              txnDate: scheduledDebit.scheduledDate || new Date(),
+            },
+          })
 
-      // Mark as completed
-      await (tx as any).scheduledDebit.update({
-        where: { id: data.id },
-        data: {
-          status: 'COMPLETED',
-          processedAt: new Date(),
-        },
-      })
-    })
+          await (tx as any).scheduledDebitMember.update({
+            where: { id: member.id },
+            data: { status: 'COMPLETED' },
+          })
+        }
+
+        // Mark as completed
+        await (tx as any).scheduledDebit.update({
+          where: { id: data.id },
+          data: {
+            status: 'COMPLETED',
+            processedAt: new Date(),
+          },
+        })
+      },
+      {
+        maxWait: 10000, // 10 seconds max wait to acquire the transaction
+        timeout: 60000, // 60 seconds timeout for the transaction
+      }
+    )
 
     return NextResponse.json({
       success: true,
