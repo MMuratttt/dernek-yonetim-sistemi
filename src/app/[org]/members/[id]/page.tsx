@@ -7,6 +7,7 @@ import { SendSmsButton } from './send-sms-button'
 import { SendEmailButton } from './send-email-button'
 import { TakePaymentButton } from './take-payment-button'
 import { MemberPayments } from './member-payments'
+import { MemberNotes } from './member-notes'
 import { prisma } from '@/lib/prisma'
 import { ensureOrgAccessBySlug } from '@/lib/authz'
 
@@ -227,6 +228,16 @@ export default async function MemberDetailPage({
             </header>
             <div className="p-3">
               <MemberPayments org={org} memberId={id} />
+            </div>
+          </section>
+          <section className="rounded border bg-card text-sm">
+            <header className="flex items-center justify-between border-b px-3 py-2 bg-muted/40">
+              <h2 className="font-medium">📝 Notlar</h2>
+            </header>
+            <div className="p-3">
+              <Suspense>
+                <MemberNotes org={org} memberId={id} />
+              </Suspense>
             </div>
           </section>
         </div>
