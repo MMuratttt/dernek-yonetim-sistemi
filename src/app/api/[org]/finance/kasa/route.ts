@@ -176,3 +176,61 @@ export async function POST(
     )
   }
 }
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ org: string }> }
+) {
+  const { org } = await params
+  const session = await getSession()
+  if (!session?.user)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const access = await ensureOrgAccessBySlug(
+    session.user.id as string,
+    org,
+    WRITE_ROLES
+  )
+  if (access.notFound)
+    return NextResponse.json({ error: 'Dernek bulunamadı' }, { status: 404 })
+  if (!access.allowed)
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  try {
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'İşlem ID gereklidir' },
+        { status: 400 }
+      )
+    }
+
+    const existing = await (prisma as any).financeTransaction.findFirst({
+      where: {
+        id,
+        organizationId: access.org.id,
+        type: { in: ['PAYMENT', 'ADJUSTMENT', 'REFUND'] },
+      },
+    })
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'İşlem bulunamadı' },
+        { status: 404 }
+      )
+    }
+
+    await (prisma as any).financeTransaction.delete({
+      where: { id },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting kasa transaction:', error)
+    return NextResponse.json(
+      { error: 'İşlem silinirken hata oluştu' },
+      { status: 500 }
+    )
+  }
+}
