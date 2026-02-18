@@ -66,6 +66,13 @@ export default async function FinancePage({ params }: any) {
           >
             💰 Kasa
           </LinkButton>
+          <LinkButton
+            href={`/${org}/finance/kasa/rapor`}
+            size="default"
+            variant="outline"
+          >
+            📊 Rapor
+          </LinkButton>
           <LinkButton href={`/${org}/members`} size="sm" variant="outline">
             Üyelere Dön
           </LinkButton>

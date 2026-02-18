@@ -592,7 +592,6 @@ export default function NewMemberPage({
                     <option value="">(Seçim yok)</option>
                     <option value="CASH">Nakit</option>
                     <option value="BANK_TRANSFER">Havale/EFT</option>
-                    <option value="CREDIT_CARD">Kredi Kartı</option>
                     <option value="OTHER">Diğer</option>
                   </select>
                 </div>

@@ -454,6 +454,7 @@ model ScheduledDebit {
   amount         Decimal                @db.Decimal(12, 2)
   currency       String                 @default("TRY")
   year           Int?
+  months         Int[]                  @default([])
   scheduledDate  DateTime?              @db.Timestamp(6)
   status         ScheduledDebitStatus   @default(PENDING)
   createdBy      String?
@@ -686,6 +687,7 @@ enum CampaignStatus {
 
 enum DebitType {
   AIDAT
+  AYLIK
   TARIH_GIREREK
 }
 

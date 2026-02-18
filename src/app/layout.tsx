@@ -23,7 +23,7 @@ export default function RootLayout({
     <html lang="tr" suppressHydrationWarning>
       <body>
         <Providers>
-          <header className="sticky top-0 z-30 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <header className="sticky top-0 z-30 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 print:hidden">
             <nav className="mx-auto max-w-6xl px-4 h-14 flex items-center gap-4">
               <Link
                 href="/"

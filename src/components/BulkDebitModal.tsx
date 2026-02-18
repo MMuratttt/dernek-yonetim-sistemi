@@ -32,10 +32,42 @@ export default function BulkDebitModal({
   const [submitting, setSubmitting] = useState(false)
 
   // Form state
-  const [debitType, setDebitType] = useState<'AIDAT' | 'TARIH_GIREREK'>('AIDAT')
+  const [debitType, setDebitType] = useState<
+    'AIDAT' | 'AYLIK' | 'TARIH_GIREREK'
+  >('AIDAT')
   const [year, setYear] = useState(new Date().getFullYear())
+  const [selectedMonths, setSelectedMonths] = useState<number[]>([])
   const [scheduledDate, setScheduledDate] = useState('')
   const [amount, setAmount] = useState(12000)
+
+  const MONTH_NAMES = [
+    'Ocak',
+    'Şubat',
+    'Mart',
+    'Nisan',
+    'Mayıs',
+    'Haziran',
+    'Temmuz',
+    'Ağustos',
+    'Eylül',
+    'Ekim',
+    'Kasım',
+    'Aralık',
+  ]
+
+  function toggleMonth(month: number) {
+    setSelectedMonths((prev) =>
+      prev.includes(month)
+        ? prev.filter((m) => m !== month)
+        : [...prev, month].sort((a, b) => a - b)
+    )
+  }
+
+  function toggleAllMonths() {
+    setSelectedMonths((prev) =>
+      prev.length === 12 ? [] : Array.from({ length: 12 }, (_, i) => i + 1)
+    )
+  }
 
   useEffect(() => {
     async function loadMembers() {
@@ -74,6 +106,11 @@ export default function BulkDebitModal({
       return
     }
 
+    if (debitType === 'AYLIK' && selectedMonths.length === 0) {
+      alert('Lütfen en az bir ay seçin')
+      return
+    }
+
     setSubmitting(true)
     try {
       const body: any = {
@@ -85,6 +122,9 @@ export default function BulkDebitModal({
 
       if (debitType === 'AIDAT') {
         body.year = year
+      } else if (debitType === 'AYLIK') {
+        body.year = year
+        body.months = selectedMonths
       } else if (debitType === 'TARIH_GIREREK' && scheduledDate) {
         body.scheduledDate = scheduledDate
       }
@@ -222,6 +262,18 @@ export default function BulkDebitModal({
                         <input
                           type="radio"
                           name="debitType"
+                          value="AYLIK"
+                          checked={debitType === 'AYLIK'}
+                          onChange={(e) => setDebitType(e.target.value as any)}
+                        />
+                        <span className="text-sm">
+                          Aylık (Seçilen ayların ilk gününe göre)
+                        </span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="debitType"
                           value="TARIH_GIREREK"
                           checked={debitType === 'TARIH_GIREREK'}
                           onChange={(e) => setDebitType(e.target.value as any)}
@@ -231,7 +283,7 @@ export default function BulkDebitModal({
                     </div>
                   </div>
 
-                  {debitType === 'AIDAT' && (
+                  {(debitType === 'AIDAT' || debitType === 'AYLIK') && (
                     <div>
                       <label className="mb-1 block text-sm font-medium">
                         Yıl
@@ -249,6 +301,50 @@ export default function BulkDebitModal({
                           )
                         })}
                       </Select>
+                    </div>
+                  )}
+
+                  {debitType === 'AYLIK' && (
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">
+                        Aylar
+                      </label>
+                      <div className="mb-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={toggleAllMonths}
+                          className="text-xs"
+                        >
+                          {selectedMonths.length === 12
+                            ? 'Tümünü Bırak'
+                            : 'Tümünü Seç'}
+                        </Button>
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {selectedMonths.length} / 12 ay seçili
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {MONTH_NAMES.map((name, idx) => {
+                          const month = idx + 1
+                          const isSelected = selectedMonths.includes(month)
+                          return (
+                            <button
+                              key={month}
+                              type="button"
+                              onClick={() => toggleMonth(month)}
+                              className={`rounded px-2 py-1.5 text-xs font-medium border transition-colors ${
+                                isSelected
+                                  ? 'bg-blue-600 text-white border-blue-600'
+                                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              {name}
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
                   )}
 

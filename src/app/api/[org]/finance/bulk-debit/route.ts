@@ -6,10 +6,11 @@ import { ensureOrgAccessBySlug, WRITE_ROLES } from '@/lib/authz'
 
 const CreateBulkDebitSchema = z.object({
   memberIds: z.array(z.string()).min(1, 'At least one member must be selected'),
-  debitType: z.enum(['AIDAT', 'TARIH_GIREREK']),
+  debitType: z.enum(['AIDAT', 'AYLIK', 'TARIH_GIREREK']),
   amount: z.number().positive(),
   currency: z.string().default('TRY'),
   year: z.number().optional(),
+  months: z.array(z.number().min(1).max(12)).optional(),
   scheduledDate: z.string().optional(),
 })
 
@@ -66,6 +67,7 @@ export async function POST(
         amount: data.amount,
         currency: data.currency,
         year: data.year,
+        months: data.months || [],
         scheduledDate: data.scheduledDate ? new Date(data.scheduledDate) : null,
         status: 'PENDING',
         createdBy: session.user.id,
@@ -225,19 +227,57 @@ export async function PATCH(
           },
         })
 
-        // Create finance transactions for each member
+        const monthNames = [
+          'Ocak',
+          'Şubat',
+          'Mart',
+          'Nisan',
+          'Mayıs',
+          'Haziran',
+          'Temmuz',
+          'Ağustos',
+          'Eylül',
+          'Ekim',
+          'Kasım',
+          'Aralık',
+        ]
+
         for (const member of scheduledDebit.members) {
-          await (tx as any).financeTransaction.create({
-            data: {
-              organizationId: access.org.id,
-              memberId: member.memberId,
-              type: 'CHARGE',
-              amount: member.amount,
-              currency: member.currency,
-              note: `Toplu borçlandırma - ${scheduledDebit.debitType}${scheduledDebit.year ? ` (${scheduledDebit.year})` : ''}`,
-              txnDate: scheduledDebit.scheduledDate || new Date(),
-            },
-          })
+          if (
+            scheduledDebit.debitType === 'AYLIK' &&
+            scheduledDebit.months?.length > 0
+          ) {
+            for (const month of scheduledDebit.months) {
+              const txnDate = new Date(
+                scheduledDebit.year || new Date().getFullYear(),
+                month - 1,
+                1
+              )
+              await (tx as any).financeTransaction.create({
+                data: {
+                  organizationId: access.org.id,
+                  memberId: member.memberId,
+                  type: 'CHARGE',
+                  amount: member.amount,
+                  currency: member.currency,
+                  note: `Toplu borçlandırma - Aylık (${monthNames[month - 1]} ${scheduledDebit.year || new Date().getFullYear()})`,
+                  txnDate,
+                },
+              })
+            }
+          } else {
+            await (tx as any).financeTransaction.create({
+              data: {
+                organizationId: access.org.id,
+                memberId: member.memberId,
+                type: 'CHARGE',
+                amount: member.amount,
+                currency: member.currency,
+                note: `Toplu borçlandırma - ${scheduledDebit.debitType}${scheduledDebit.year ? ` (${scheduledDebit.year})` : ''}`,
+                txnDate: scheduledDebit.scheduledDate || new Date(),
+              },
+            })
+          }
 
           await (tx as any).scheduledDebitMember.update({
             where: { id: member.id },
