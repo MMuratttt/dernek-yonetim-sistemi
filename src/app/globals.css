@@ -79,14 +79,13 @@ body {
   transform: translateY(0) scale(1);
 }
 
-/* Print styles for server-side text PDFs */
+/* Print styles */
 @page {
   size: A4;
-  margin: 20mm;
+  margin: 15mm 12mm;
 }
 
 @media print {
-  /* Avoid splitting important blocks across pages */
   .avoid-break {
     break-inside: avoid;
     page-break-inside: avoid;
@@ -101,9 +100,71 @@ body {
   .print-only {
     display: block !important;
   }
-  /* Improve text rendering for print */
+
   body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    font-size: 10px;
+    line-height: 1.3;
+    color: #000 !important;
+    background: #fff !important;
+  }
+
+  nav,
+  .print\\:hidden {
+    display: none !important;
+  }
+
+  .print\\:block {
+    display: block !important;
+  }
+
+  /* Strip all decorative styles for print */
+  .print-report,
+  .print-report * {
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    color: #000 !important;
+  }
+
+  .print-report {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .print-report table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 9px;
+  }
+
+  .print-report th,
+  .print-report td {
+    padding: 3px 6px;
+    border-bottom: 0.5px solid #ccc;
+  }
+
+  .print-report thead th {
+    border-bottom: 1.5px solid #000;
+    font-weight: 700;
+  }
+
+  .print-report tfoot td {
+    border-top: 1.5px solid #000;
+    font-weight: 700;
+  }
+
+  .print-report tr {
+    break-inside: avoid;
+  }
+
+  .print-report h3 {
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+
+  .print-report .report-section {
+    margin-bottom: 12px;
   }
 }

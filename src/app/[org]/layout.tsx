@@ -36,13 +36,15 @@ export default async function OrgLayout({
 
     return (
       <section>
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between print:hidden">
           <h1 className="text-2xl font-semibold leading-none tracking-tight">
             {access.org.name}
           </h1>
         </div>
-        <OrgNav org={org} />
-        <div className="mt-6">{children}</div>
+        <div className="print:hidden">
+          <OrgNav org={org} />
+        </div>
+        <div className="mt-6 print:mt-0">{children}</div>
       </section>
     )
   } catch (err: any) {

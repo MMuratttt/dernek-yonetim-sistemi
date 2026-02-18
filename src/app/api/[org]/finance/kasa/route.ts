@@ -8,7 +8,7 @@ import { Decimal } from '@prisma/client/runtime/library'
 const CreateKasaTxn = z.object({
   type: z.enum(['GELIR', 'GIDER']),
   amount: z.number().positive(),
-  paymentMethod: z.enum(['CASH', 'BANK_TRANSFER', 'CREDIT_CARD', 'OTHER']),
+  paymentMethod: z.enum(['CASH', 'BANK_TRANSFER', 'OTHER']),
   receiptNo: z.string().optional().nullable(),
   note: z.string().min(1, 'Açıklama gereklidir'),
 })
@@ -48,28 +48,38 @@ export async function GET(
       take: 100,
     })
 
-    // Calculate balance, income, and expense
     let income = 0
     let expense = 0
+    let cashIncome = 0
+    let cashExpense = 0
+    let bankIncome = 0
+    let bankExpense = 0
 
     allTransactions.forEach((tx: any) => {
       const amount = Number(tx.amount)
+      const isCash = tx.paymentMethod === 'CASH'
+      const isBank = tx.paymentMethod === 'BANK_TRANSFER'
 
-      // PAYMENT and REFUND are income (Gelir)
       if (tx.type === 'PAYMENT' || tx.type === 'REFUND') {
         income += amount
-      }
-      // ADJUSTMENT can be expense (Gider) when negative or income when positive
-      else if (tx.type === 'ADJUSTMENT') {
+        if (isCash) cashIncome += amount
+        else if (isBank) bankIncome += amount
+      } else if (tx.type === 'ADJUSTMENT') {
         if (amount < 0) {
           expense += Math.abs(amount)
+          if (isCash) cashExpense += Math.abs(amount)
+          else if (isBank) bankExpense += Math.abs(amount)
         } else {
           income += amount
+          if (isCash) cashIncome += amount
+          else if (isBank) bankIncome += amount
         }
       }
     })
 
     const balance = income - expense
+    const cashBalance = cashIncome - cashExpense
+    const bankBalance = bankIncome - bankExpense
 
     // Map transactions to a simplified format for display
     const transactions = allTransactions.map((tx: any) => {
@@ -107,6 +117,8 @@ export async function GET(
 
     return NextResponse.json({
       balance,
+      cashBalance,
+      bankBalance,
       income,
       expense,
       transactions,
@@ -177,6 +189,79 @@ export async function POST(
   }
 }
 
+const UpdateKasaTxn = z.object({
+  id: z.string(),
+  type: z.enum(['GELIR', 'GIDER']),
+  amount: z.number().positive(),
+  paymentMethod: z.enum(['CASH', 'BANK_TRANSFER', 'OTHER']),
+  receiptNo: z.string().optional().nullable(),
+  note: z.string().min(1, 'Açıklama gereklidir'),
+})
+
+export async function PUT(
+  req: Request,
+  { params }: { params: Promise<{ org: string }> }
+) {
+  const { org } = await params
+  const session = await getSession()
+  if (!session?.user)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const access = await ensureOrgAccessBySlug(
+    session.user.id as string,
+    org,
+    WRITE_ROLES
+  )
+  if (access.notFound)
+    return NextResponse.json({ error: 'Dernek bulunamadı' }, { status: 404 })
+  if (!access.allowed)
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  try {
+    const json = await req.json()
+    const data = UpdateKasaTxn.parse(json)
+
+    const existing = await (prisma as any).financeTransaction.findFirst({
+      where: {
+        id: data.id,
+        organizationId: access.org.id,
+        type: { in: ['PAYMENT', 'ADJUSTMENT', 'REFUND'] },
+      },
+    })
+
+    if (!existing) {
+      return NextResponse.json({ error: 'İşlem bulunamadı' }, { status: 404 })
+    }
+
+    const transactionType = data.type === 'GELIR' ? 'PAYMENT' : 'ADJUSTMENT'
+    const amount = data.type === 'GIDER' ? -Math.abs(data.amount) : data.amount
+
+    const updated = await (prisma as any).financeTransaction.update({
+      where: { id: data.id },
+      data: {
+        type: transactionType,
+        amount: new Decimal(amount),
+        paymentMethod: data.paymentMethod,
+        receiptNo: data.receiptNo || null,
+        note: data.note,
+      },
+    })
+
+    return NextResponse.json({ success: true, item: updated })
+  } catch (error) {
+    console.error('Error updating kasa transaction:', error)
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Geçersiz veri', details: error.issues },
+        { status: 400 }
+      )
+    }
+    return NextResponse.json(
+      { error: 'İşlem güncellenirken hata oluştu' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ org: string }> }
@@ -215,10 +300,7 @@ export async function DELETE(
     })
 
     if (!existing) {
-      return NextResponse.json(
-        { error: 'İşlem bulunamadı' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'İşlem bulunamadı' }, { status: 404 })
     }
 
     await (prisma as any).financeTransaction.delete({

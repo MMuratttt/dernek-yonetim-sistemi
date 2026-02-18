@@ -11,9 +11,7 @@ const CreateTxn = z.object({
   currency: z.string().min(3).max(3).default('TRY'),
   planId: z.string().optional(),
   periodId: z.string().optional(),
-  paymentMethod: z
-    .enum(['CASH', 'BANK_TRANSFER', 'CREDIT_CARD', 'OTHER'])
-    .optional(),
+  paymentMethod: z.enum(['CASH', 'BANK_TRANSFER', 'OTHER']).optional(),
   receiptNo: z.string().optional(),
   reference: z.string().optional(),
   note: z.string().optional(),

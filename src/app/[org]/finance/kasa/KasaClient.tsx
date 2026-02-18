@@ -24,6 +24,8 @@ export default function KasaClient({
   initial: any
 }) {
   const [balance, setBalance] = useState(initial.balance || 0)
+  const [cashBalance, setCashBalance] = useState(initial.cashBalance || 0)
+  const [bankBalance, setBankBalance] = useState(initial.bankBalance || 0)
   const [income, setIncome] = useState(initial.income || 0)
   const [expense, setExpense] = useState(initial.expense || 0)
   const [transactions, setTransactions] = useState(initial.transactions || [])
@@ -34,6 +36,51 @@ export default function KasaClient({
   >('ALL')
   const [deleteTarget, setDeleteTarget] = useState<any>(null)
   const [deleting, setDeleting] = useState(false)
+  const [editTarget, setEditTarget] = useState<any>(null)
+  const [editing, setEditing] = useState(false)
+
+  function openEdit(tx: any) {
+    setEditTarget({
+      id: tx.id,
+      type: tx.type,
+      amount: Math.abs(Number(tx.amount)),
+      paymentMethod: tx.paymentMethod || 'CASH',
+      receiptNo: tx.receiptNo || '',
+      note: tx.note || '',
+    })
+  }
+
+  async function handleEdit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!editTarget) return
+    setEditing(true)
+    try {
+      const res = await fetch(`/api/${org}/finance/kasa`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editTarget.id,
+          type: editTarget.type,
+          amount: editTarget.amount,
+          paymentMethod: editTarget.paymentMethod,
+          receiptNo: editTarget.receiptNo || null,
+          note: editTarget.note,
+        }),
+      })
+      if (res.ok) {
+        setEditTarget(null)
+        await refreshData()
+      } else {
+        const error = await res.json()
+        alert(`Hata: ${error.error || 'Bilinmeyen hata'}`)
+      }
+    } catch (error) {
+      console.error('Error updating transaction:', error)
+      alert('İşlem güncellenirken hata oluştu')
+    } finally {
+      setEditing(false)
+    }
+  }
 
   async function handleDelete() {
     if (!deleteTarget) return
@@ -65,6 +112,8 @@ export default function KasaClient({
       if (res.ok) {
         const data = await res.json()
         setBalance(data.balance)
+        setCashBalance(data.cashBalance || 0)
+        setBankBalance(data.bankBalance || 0)
         setIncome(data.income)
         setExpense(data.expense)
         setTransactions(data.transactions)
@@ -184,6 +233,24 @@ export default function KasaClient({
               </svg>
             </div>
           </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3">
+            <div>
+              <p className="text-xs text-muted-foreground">Nakit</p>
+              <p
+                className={`text-sm font-semibold ${cashBalance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}
+              >
+                {formatCurrency(cashBalance)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Banka</p>
+              <p
+                className={`text-sm font-semibold ${bankBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`}
+              >
+                {formatCurrency(bankBalance)}
+              </p>
+            </div>
+          </div>
         </Card>
 
         <Card className="p-6">
@@ -279,8 +346,6 @@ export default function KasaClient({
                 <Select name="paymentMethod" required>
                   <option value="CASH">Nakit</option>
                   <option value="BANK_TRANSFER">Banka Transferi</option>
-                  <option value="CREDIT_CARD">Kredi Kartı</option>
-                  <option value="OTHER">Diğer</option>
                 </Select>
               </div>
 
@@ -433,26 +498,48 @@ export default function KasaClient({
                       </p>
                     </div>
                     {canWrite && (
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget(tx)}
-                        className="rounded-md p-1.5 text-muted-foreground hover:bg-red-100 hover:text-red-600 transition-colors"
-                        title="Sil"
-                      >
-                        <svg
-                          className="h-4 w-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(tx)}
+                          className="rounded-md p-1.5 text-muted-foreground hover:bg-blue-100 hover:text-blue-600 transition-colors"
+                          title="Düzenle"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                      </button>
+                          <svg
+                            className="h-4 w-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(tx)}
+                          className="rounded-md p-1.5 text-muted-foreground hover:bg-red-100 hover:text-red-600 transition-colors"
+                          title="Sil"
+                        >
+                          <svg
+                            className="h-4 w-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -460,6 +547,122 @@ export default function KasaClient({
           </div>
         )}
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog
+        open={!!editTarget}
+        onOpenChange={(open) => {
+          if (!open) setEditTarget(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>İşlemi Düzenle</DialogTitle>
+            <DialogDescription>
+              İşlem bilgilerini güncelleyebilirsiniz.
+            </DialogDescription>
+          </DialogHeader>
+          {editTarget && (
+            <form onSubmit={handleEdit} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    İşlem Tipi
+                  </label>
+                  <Select
+                    value={editTarget.type}
+                    onChange={(e) =>
+                      setEditTarget({ ...editTarget, type: e.target.value })
+                    }
+                    required
+                  >
+                    <option value="GELIR">Gelir</option>
+                    <option value="GIDER">Gider</option>
+                  </Select>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    Tutar
+                  </label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editTarget.amount}
+                    onChange={(e) =>
+                      setEditTarget({
+                        ...editTarget,
+                        amount: Number(e.target.value),
+                      })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    Ödeme Yöntemi
+                  </label>
+                  <Select
+                    value={editTarget.paymentMethod}
+                    onChange={(e) =>
+                      setEditTarget({
+                        ...editTarget,
+                        paymentMethod: e.target.value,
+                      })
+                    }
+                    required
+                  >
+                    <option value="CASH">Nakit</option>
+                    <option value="BANK_TRANSFER">Banka Transferi</option>
+                  </Select>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    Fiş No (Opsiyonel)
+                  </label>
+                  <Input
+                    type="text"
+                    value={editTarget.receiptNo}
+                    onChange={(e) =>
+                      setEditTarget({
+                        ...editTarget,
+                        receiptNo: e.target.value,
+                      })
+                    }
+                    placeholder="Fiş numarası"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium">
+                  Açıklama
+                </label>
+                <Input
+                  type="text"
+                  value={editTarget.note}
+                  onChange={(e) =>
+                    setEditTarget({ ...editTarget, note: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditTarget(null)}
+                  disabled={editing}
+                >
+                  İptal
+                </Button>
+                <Button type="submit" disabled={editing}>
+                  {editing ? 'Kaydediliyor...' : 'Kaydet'}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog

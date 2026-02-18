@@ -19,9 +19,9 @@ export const TakePaymentButton: React.FC<Props> = ({
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState('')
-  const [method, setMethod] = useState<
-    'CASH' | 'BANK_TRANSFER' | 'CREDIT_CARD' | 'OTHER'
-  >('CASH')
+  const [method, setMethod] = useState<'CASH' | 'BANK_TRANSFER' | 'OTHER'>(
+    'CASH'
+  )
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [receiptNo, setReceiptNo] = useState('')
@@ -117,7 +117,6 @@ export const TakePaymentButton: React.FC<Props> = ({
                 >
                   <option value="CASH">Nakit</option>
                   <option value="BANK_TRANSFER">Havale/EFT</option>
-                  <option value="CREDIT_CARD">Kredi Kartı</option>
                   <option value="OTHER">Diğer</option>
                 </select>
               </div>

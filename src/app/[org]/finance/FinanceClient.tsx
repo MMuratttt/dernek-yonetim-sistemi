@@ -291,7 +291,11 @@ export default function FinanceClient({
                         <div>
                           <span className="text-gray-600">Tip:</span>{' '}
                           <span className="font-medium">
-                            {bd.debitType === 'AIDAT' ? 'Aidat' : 'Tarihli'}
+                            {bd.debitType === 'AIDAT'
+                              ? 'Yıllık'
+                              : bd.debitType === 'AYLIK'
+                                ? 'Aylık'
+                                : 'Tarihli'}
                           </span>
                         </div>
                         <div>
@@ -310,6 +314,32 @@ export default function FinanceClient({
                           <div>
                             <span className="text-gray-600">Yıl:</span>{' '}
                             <span className="font-medium">{bd.year}</span>
+                          </div>
+                        )}
+                        {bd.months && bd.months.length > 0 && (
+                          <div className="col-span-2">
+                            <span className="text-gray-600">Aylar:</span>{' '}
+                            <span className="font-medium">
+                              {bd.months
+                                .map(
+                                  (m: number) =>
+                                    [
+                                      'Oca',
+                                      'Şub',
+                                      'Mar',
+                                      'Nis',
+                                      'May',
+                                      'Haz',
+                                      'Tem',
+                                      'Ağu',
+                                      'Eyl',
+                                      'Eki',
+                                      'Kas',
+                                      'Ara',
+                                    ][m - 1]
+                                )
+                                .join(', ')}
+                            </span>
                           </div>
                         )}
                         {bd.scheduledDate && (
