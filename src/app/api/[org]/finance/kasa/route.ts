@@ -28,24 +28,22 @@ export async function GET(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   try {
-    // Fetch all transactions for the organization
-    // Exclude CHARGE as it represents debt assignment, not actual cash flow
-    const allTransactions = await (prisma as any).financeTransaction.findMany({
-      where: {
-        organizationId: access.org.id,
-        type: { in: ['PAYMENT', 'ADJUSTMENT', 'REFUND'] },
-      },
-      include: {
-        member: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
-      orderBy: { txnDate: 'desc' },
-      take: 100,
+    const { searchParams } = new URL(req.url)
+    const page = Math.max(1, Number(searchParams.get('page') || '1'))
+    const pageSize = Math.min(
+      50,
+      Math.max(1, Number(searchParams.get('pageSize') || '25'))
+    )
+
+    const whereClause = {
+      organizationId: access.org.id,
+      type: { in: ['PAYMENT', 'ADJUSTMENT', 'REFUND'] },
+    }
+
+    // Lightweight query for balance computation — ALL records, no member include
+    const balanceTxns = await (prisma as any).financeTransaction.findMany({
+      where: whereClause,
+      select: { amount: true, type: true, paymentMethod: true },
     })
 
     let income = 0
@@ -55,7 +53,7 @@ export async function GET(
     let bankIncome = 0
     let bankExpense = 0
 
-    allTransactions.forEach((tx: any) => {
+    balanceTxns.forEach((tx: any) => {
       const amount = Number(tx.amount)
       const isCash = tx.paymentMethod === 'CASH'
       const isBank = tx.paymentMethod === 'BANK_TRANSFER'
@@ -81,17 +79,32 @@ export async function GET(
     const cashBalance = cashIncome - cashExpense
     const bankBalance = bankIncome - bankExpense
 
-    // Map transactions to a simplified format for display
-    const transactions = allTransactions.map((tx: any) => {
-      let displayType = 'GELIR'
+    // Paginated query for the transaction list
+    const [totalCount, paginatedTransactions] = await Promise.all([
+      (prisma as any).financeTransaction.count({ where: whereClause }),
+      (prisma as any).financeTransaction.findMany({
+        where: whereClause,
+        include: {
+          member: {
+            select: { id: true, firstName: true, lastName: true },
+          },
+        },
+        orderBy: { txnDate: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ])
 
+    const totalPages = Math.ceil(totalCount / pageSize)
+
+    const transactions = paginatedTransactions.map((tx: any) => {
+      let displayType = 'GELIR'
       if (tx.type === 'PAYMENT' || tx.type === 'REFUND') {
         displayType = 'GELIR'
       } else if (tx.type === 'ADJUSTMENT') {
         displayType = Number(tx.amount) >= 0 ? 'GELIR' : 'GIDER'
       }
 
-      // Build description: show member name if available, otherwise use note or "Dernek Kasası"
       let description = tx.note || 'İşlem'
       if (tx.member) {
         const memberName = `${tx.member.firstName} ${tx.member.lastName}`
@@ -122,6 +135,7 @@ export async function GET(
       income,
       expense,
       transactions,
+      pagination: { page, pageSize, totalCount, totalPages },
     })
   } catch (error) {
     console.error('Error fetching kasa data:', error)

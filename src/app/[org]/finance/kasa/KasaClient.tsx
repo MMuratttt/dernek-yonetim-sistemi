@@ -38,6 +38,14 @@ export default function KasaClient({
   const [deleting, setDeleting] = useState(false)
   const [editTarget, setEditTarget] = useState<any>(null)
   const [editing, setEditing] = useState(false)
+  const [currentPage, setCurrentPage] = useState(initial.pagination?.page || 1)
+  const [totalPages, setTotalPages] = useState(
+    initial.pagination?.totalPages || 1
+  )
+  const [totalCount, setTotalCount] = useState(
+    initial.pagination?.totalCount || 0
+  )
+  const pageSize = initial.pagination?.pageSize || 25
 
   function openEdit(tx: any) {
     setEditTarget({
@@ -105,10 +113,13 @@ export default function KasaClient({
     }
   }
 
-  async function refreshData() {
+  async function refreshData(page?: number) {
+    const targetPage = page ?? currentPage
     setLoading(true)
     try {
-      const res = await fetch(`/api/${org}/finance/kasa`)
+      const res = await fetch(
+        `/api/${org}/finance/kasa?page=${targetPage}&pageSize=${pageSize}`
+      )
       if (res.ok) {
         const data = await res.json()
         setBalance(data.balance)
@@ -117,12 +128,22 @@ export default function KasaClient({
         setIncome(data.income)
         setExpense(data.expense)
         setTransactions(data.transactions)
+        if (data.pagination) {
+          setCurrentPage(data.pagination.page)
+          setTotalPages(data.pagination.totalPages)
+          setTotalCount(data.pagination.totalCount)
+        }
       }
     } catch (error) {
       console.error('Error refreshing data:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  function goToPage(page: number) {
+    if (page < 1 || page > totalPages || loading) return
+    refreshData(page)
   }
 
   async function handleAddTransaction(e: React.FormEvent<HTMLFormElement>) {
@@ -170,7 +191,7 @@ export default function KasaClient({
         if (form) {
           form.reset()
         }
-        await refreshData()
+        await refreshData(1)
         alert('İşlem başarıyla kaydedildi')
       } else {
         const error = await res.json()
@@ -545,6 +566,55 @@ export default function KasaClient({
                 </div>
               ))}
           </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <>
+            <Separator className="my-4" />
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Toplam {totalCount} işlem
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(1)}
+                  disabled={currentPage <= 1 || loading}
+                >
+                  {'«'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage <= 1 || loading}
+                >
+                  {'‹ Önceki'}
+                </Button>
+                <span className="px-3 text-sm font-medium">
+                  {currentPage} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage >= totalPages || loading}
+                >
+                  {'Sonraki ›'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(totalPages)}
+                  disabled={currentPage >= totalPages || loading}
+                >
+                  {'»'}
+                </Button>
+              </div>
+            </div>
+          </>
         )}
       </Card>
 
