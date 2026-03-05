@@ -461,7 +461,7 @@ export default function KasaClient({
             <Button
               variant="outline"
               size="sm"
-              onClick={refreshData}
+              onClick={() => refreshData()}
               disabled={loading}
             >
               {loading ? 'Yüklüyor...' : 'Yenile'}
