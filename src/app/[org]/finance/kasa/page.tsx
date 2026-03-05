@@ -198,7 +198,12 @@ export default async function KasaPage({ params }: any) {
           Gelir / Gider Raporu
         </LinkButton>
       </div>
-      <KasaClient org={org} canWrite={canWrite} initial={initial} />
+      <KasaClient
+        org={org}
+        canWrite={canWrite}
+        initial={initial}
+        today={new Date().toISOString().split('T')[0]}
+      />
     </div>
   )
 }

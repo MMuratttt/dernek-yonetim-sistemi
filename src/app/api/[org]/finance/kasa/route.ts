@@ -11,6 +11,7 @@ const CreateKasaTxn = z.object({
   paymentMethod: z.enum(['CASH', 'BANK_TRANSFER', 'OTHER']),
   receiptNo: z.string().optional().nullable(),
   note: z.string().min(1, 'Açıklama gereklidir'),
+  txnDate: z.coerce.date().optional(),
 })
 
 export async function GET(
@@ -183,7 +184,7 @@ export async function POST(
         paymentMethod: data.paymentMethod,
         receiptNo: data.receiptNo || null,
         note: data.note,
-        txnDate: new Date(),
+        txnDate: data.txnDate ?? new Date(),
       },
     })
 
@@ -210,6 +211,7 @@ const UpdateKasaTxn = z.object({
   paymentMethod: z.enum(['CASH', 'BANK_TRANSFER', 'OTHER']),
   receiptNo: z.string().optional().nullable(),
   note: z.string().min(1, 'Açıklama gereklidir'),
+  txnDate: z.coerce.date().optional(),
 })
 
 export async function PUT(
@@ -257,6 +259,7 @@ export async function PUT(
         paymentMethod: data.paymentMethod,
         receiptNo: data.receiptNo || null,
         note: data.note,
+        ...(data.txnDate ? { txnDate: data.txnDate } : {}),
       },
     })
 
