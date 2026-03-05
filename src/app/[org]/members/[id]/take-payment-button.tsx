@@ -20,12 +20,13 @@ export const TakePaymentButton: React.FC<Props> = ({
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState<'CASH' | 'BANK_TRANSFER' | 'OTHER'>(
-    'CASH'
+    'BANK_TRANSFER'
   )
-  const [note, setNote] = useState('')
+  const [note, setNote] = useState('Aidat')
   const [saving, setSaving] = useState(false)
   const [receiptNo, setReceiptNo] = useState('')
   const [isDonation, setIsDonation] = useState(false)
+  const [txnDate, setTxnDate] = useState(new Date().toISOString().split('T')[0])
   const { add } = useToast()
 
   async function submit() {
@@ -45,18 +46,27 @@ export const TakePaymentButton: React.FC<Props> = ({
           amount: val,
           currency: 'TRY',
           paymentMethod: method,
-          note: note || undefined,
+          note: note || 'Aidat',
           receiptNo: receiptNo || undefined,
           reference: isDonation ? 'BAGIS' : undefined,
+          txnDate: txnDate
+            ? (() => {
+                const now = new Date()
+                return new Date(
+                  `${txnDate}T${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
+                ).toISOString()
+              })()
+            : undefined,
         }),
       })
       if (res.ok) {
         add({ variant: 'success', title: 'Ödeme kaydedildi' })
         setOpen(false)
         setAmount('')
-        setNote('')
+        setNote('Aidat')
         setReceiptNo('')
         setIsDonation(false)
+        setTxnDate(new Date().toISOString().split('T')[0])
         if (refreshPath) router.refresh()
       } else {
         const data = await res.json().catch(() => null)
@@ -108,6 +118,18 @@ export const TakePaymentButton: React.FC<Props> = ({
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1 text-foreground">
+                  Tarih
+                </label>
+                <input
+                  type="date"
+                  value={txnDate}
+                  onChange={(e) => setTxnDate(e.target.value)}
+                  className="w-full rounded border px-3 py-2 bg-background text-foreground"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1 text-foreground">
                   Ödeme Yöntemi
                 </label>
                 <select
@@ -115,8 +137,8 @@ export const TakePaymentButton: React.FC<Props> = ({
                   value={method}
                   onChange={(e) => setMethod(e.target.value as any)}
                 >
-                  <option value="CASH">Nakit</option>
                   <option value="BANK_TRANSFER">Havale/EFT</option>
+                  <option value="CASH">Nakit</option>
                   <option value="OTHER">Diğer</option>
                 </select>
               </div>

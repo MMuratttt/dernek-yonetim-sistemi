@@ -18,10 +18,12 @@ export default function KasaClient({
   org,
   canWrite,
   initial,
+  today,
 }: {
   org: string
   canWrite: boolean
   initial: any
+  today: string
 }) {
   const [balance, setBalance] = useState(initial.balance || 0)
   const [cashBalance, setCashBalance] = useState(initial.cashBalance || 0)
@@ -38,15 +40,26 @@ export default function KasaClient({
   const [deleting, setDeleting] = useState(false)
   const [editTarget, setEditTarget] = useState<any>(null)
   const [editing, setEditing] = useState(false)
+  const [currentPage, setCurrentPage] = useState(initial.pagination?.page || 1)
+  const [totalPages, setTotalPages] = useState(
+    initial.pagination?.totalPages || 1
+  )
+  const [totalCount, setTotalCount] = useState(
+    initial.pagination?.totalCount || 0
+  )
+  const pageSize = initial.pagination?.pageSize || 25
 
   function openEdit(tx: any) {
     setEditTarget({
       id: tx.id,
       type: tx.type,
       amount: Math.abs(Number(tx.amount)),
-      paymentMethod: tx.paymentMethod || 'CASH',
+      paymentMethod: tx.paymentMethod || 'BANK_TRANSFER',
       receiptNo: tx.receiptNo || '',
       note: tx.note || '',
+      txnDate: tx.txnDate
+        ? new Date(tx.txnDate).toISOString().split('T')[0]
+        : today,
     })
   }
 
@@ -65,6 +78,7 @@ export default function KasaClient({
           paymentMethod: editTarget.paymentMethod,
           receiptNo: editTarget.receiptNo || null,
           note: editTarget.note,
+          txnDate: editTarget.txnDate,
         }),
       })
       if (res.ok) {
@@ -105,10 +119,13 @@ export default function KasaClient({
     }
   }
 
-  async function refreshData() {
+  async function refreshData(page?: number) {
+    const targetPage = page ?? currentPage
     setLoading(true)
     try {
-      const res = await fetch(`/api/${org}/finance/kasa`)
+      const res = await fetch(
+        `/api/${org}/finance/kasa?page=${targetPage}&pageSize=${pageSize}`
+      )
       if (res.ok) {
         const data = await res.json()
         setBalance(data.balance)
@@ -117,6 +134,11 @@ export default function KasaClient({
         setIncome(data.income)
         setExpense(data.expense)
         setTransactions(data.transactions)
+        if (data.pagination) {
+          setCurrentPage(data.pagination.page)
+          setTotalPages(data.pagination.totalPages)
+          setTotalCount(data.pagination.totalCount)
+        }
       }
     } catch (error) {
       console.error('Error refreshing data:', error)
@@ -125,15 +147,24 @@ export default function KasaClient({
     }
   }
 
+  function goToPage(page: number) {
+    if (page < 1 || page > totalPages || loading) return
+    refreshData(page)
+  }
+
   async function handleAddTransaction(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    const formData = new FormData(e.currentTarget)
+    const form = e.currentTarget
+    const formData = new FormData(form)
     const type = String(formData.get('type'))
     const amount = Number(formData.get('amount'))
     const description = String(formData.get('description'))
     const paymentMethod = String(formData.get('paymentMethod'))
     const receiptNo = formData.get('receiptNo')
       ? String(formData.get('receiptNo'))
+      : undefined
+    const txnDateStr = formData.get('txnDate')
+      ? String(formData.get('txnDate'))
       : undefined
 
     if (!type || type === '') {
@@ -151,6 +182,16 @@ export default function KasaClient({
       return
     }
 
+    if (!txnDateStr) {
+      alert('Lütfen tarih seçiniz')
+      return
+    }
+
+    const now = new Date()
+    const txnDate = new Date(
+      `${txnDateStr}T${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
+    ).toISOString()
+
     setSubmitting(true)
     try {
       const res = await fetch(`/api/${org}/finance/kasa`, {
@@ -162,15 +203,13 @@ export default function KasaClient({
           note: description,
           paymentMethod,
           receiptNo,
+          txnDate,
         }),
       })
 
       if (res.ok) {
-        const form = e.currentTarget
-        if (form) {
-          form.reset()
-        }
-        await refreshData()
+        form.reset()
+        await refreshData(1)
         alert('İşlem başarıyla kaydedildi')
       } else {
         const error = await res.json()
@@ -213,6 +252,7 @@ export default function KasaClient({
               </p>
               <h2
                 className={`text-3xl font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                suppressHydrationWarning
               >
                 {formatCurrency(balance)}
               </h2>
@@ -238,6 +278,7 @@ export default function KasaClient({
               <p className="text-xs text-muted-foreground">Nakit</p>
               <p
                 className={`text-sm font-semibold ${cashBalance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}
+                suppressHydrationWarning
               >
                 {formatCurrency(cashBalance)}
               </p>
@@ -246,6 +287,7 @@ export default function KasaClient({
               <p className="text-xs text-muted-foreground">Banka</p>
               <p
                 className={`text-sm font-semibold ${bankBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`}
+                suppressHydrationWarning
               >
                 {formatCurrency(bankBalance)}
               </p>
@@ -259,7 +301,10 @@ export default function KasaClient({
               <p className="text-sm font-medium text-muted-foreground">
                 Toplam Gelir
               </p>
-              <h2 className="text-3xl font-bold text-green-600">
+              <h2
+                className="text-3xl font-bold text-green-600"
+                suppressHydrationWarning
+              >
                 {formatCurrency(income)}
               </h2>
             </div>
@@ -287,7 +332,10 @@ export default function KasaClient({
               <p className="text-sm font-medium text-muted-foreground">
                 Toplam Gider
               </p>
-              <h2 className="text-3xl font-bold text-red-600">
+              <h2
+                className="text-3xl font-bold text-red-600"
+                suppressHydrationWarning
+              >
                 {formatCurrency(expense)}
               </h2>
             </div>
@@ -340,12 +388,26 @@ export default function KasaClient({
               </div>
 
               <div>
+                <label className="mb-2 block text-sm font-medium">Tarih</label>
+                <Input
+                  name="txnDate"
+                  type="date"
+                  defaultValue={today}
+                  required
+                />
+              </div>
+
+              <div>
                 <label className="mb-2 block text-sm font-medium">
                   Ödeme Yöntemi
                 </label>
-                <Select name="paymentMethod" required>
-                  <option value="CASH">Nakit</option>
+                <Select
+                  name="paymentMethod"
+                  defaultValue="BANK_TRANSFER"
+                  required
+                >
                   <option value="BANK_TRANSFER">Banka Transferi</option>
+                  <option value="CASH">Nakit</option>
                 </Select>
               </div>
 
@@ -473,7 +535,10 @@ export default function KasaClient({
                         <p className="font-medium">
                           {tx.note || 'İsimsiz işlem'}
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p
+                          className="text-sm text-muted-foreground"
+                          suppressHydrationWarning
+                        >
                           {formatDate(tx.txnDate)}
                           {tx.receiptNo && ` • Fiş: ${tx.receiptNo}`}
                           {tx.paymentMethod &&
@@ -494,7 +559,9 @@ export default function KasaClient({
                         {tx.type === 'GELIR' || tx.type === 'PAYMENT'
                           ? '+'
                           : '-'}
-                        {formatCurrency(Math.abs(Number(tx.amount)))}
+                        <span suppressHydrationWarning>
+                          {formatCurrency(Math.abs(Number(tx.amount)))}
+                        </span>
                       </p>
                     </div>
                     {canWrite && (
@@ -545,6 +612,55 @@ export default function KasaClient({
                 </div>
               ))}
           </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <>
+            <Separator className="my-4" />
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Toplam {totalCount} işlem
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(1)}
+                  disabled={currentPage <= 1 || loading}
+                >
+                  {'«'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage <= 1 || loading}
+                >
+                  {'‹ Önceki'}
+                </Button>
+                <span className="px-3 text-sm font-medium">
+                  {currentPage} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage >= totalPages || loading}
+                >
+                  {'Sonraki ›'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(totalPages)}
+                  disabled={currentPage >= totalPages || loading}
+                >
+                  {'»'}
+                </Button>
+              </div>
+            </div>
+          </>
         )}
       </Card>
 
@@ -600,6 +716,22 @@ export default function KasaClient({
                 </div>
                 <div>
                   <label className="mb-2 block text-sm font-medium">
+                    Tarih
+                  </label>
+                  <Input
+                    type="date"
+                    value={editTarget.txnDate}
+                    onChange={(e) =>
+                      setEditTarget({
+                        ...editTarget,
+                        txnDate: e.target.value,
+                      })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
                     Ödeme Yöntemi
                   </label>
                   <Select
@@ -612,8 +744,8 @@ export default function KasaClient({
                     }
                     required
                   >
-                    <option value="CASH">Nakit</option>
                     <option value="BANK_TRANSFER">Banka Transferi</option>
+                    <option value="CASH">Nakit</option>
                   </Select>
                 </div>
                 <div>
@@ -684,7 +816,10 @@ export default function KasaClient({
               <p className="font-medium">
                 {deleteTarget.note || 'İsimsiz işlem'}
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p
+                className="text-sm text-muted-foreground"
+                suppressHydrationWarning
+              >
                 {formatDate(deleteTarget.txnDate)}
               </p>
               <p
@@ -699,7 +834,9 @@ export default function KasaClient({
                 deleteTarget.type === 'PAYMENT'
                   ? '+'
                   : '-'}
-                {formatCurrency(Math.abs(Number(deleteTarget.amount)))}
+                <span suppressHydrationWarning>
+                  {formatCurrency(Math.abs(Number(deleteTarget.amount)))}
+                </span>
               </p>
             </div>
           )}

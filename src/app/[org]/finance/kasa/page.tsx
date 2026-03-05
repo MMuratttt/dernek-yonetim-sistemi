@@ -50,27 +50,17 @@ export default async function KasaPage({ params }: any) {
         }
       }
 
-      // Fetch all transactions for the organization directly from database
-      // Exclude CHARGE as it represents debt assignment, not actual cash flow
-      const allTransactions = await (prisma as any).financeTransaction.findMany(
-        {
-          where: {
-            organizationId: access.org.id,
-            type: { in: ['PAYMENT', 'ADJUSTMENT', 'REFUND'] },
-          },
-          include: {
-            member: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-              },
-            },
-          },
-          orderBy: { txnDate: 'desc' },
-          take: 100,
-        }
-      )
+      const PAGE_SIZE = 25
+      const whereClause = {
+        organizationId: access.org.id,
+        type: { in: ['PAYMENT', 'ADJUSTMENT', 'REFUND'] },
+      }
+
+      // Lightweight query for balance — ALL records, no member include
+      const balanceTxns = await (prisma as any).financeTransaction.findMany({
+        where: whereClause,
+        select: { amount: true, type: true, paymentMethod: true },
+      })
 
       let income = 0
       let expense = 0
@@ -79,7 +69,7 @@ export default async function KasaPage({ params }: any) {
       let bankIncome = 0
       let bankExpense = 0
 
-      allTransactions.forEach((tx: any) => {
+      balanceTxns.forEach((tx: any) => {
         const amount = Number(tx.amount)
         const isCash = tx.paymentMethod === 'CASH'
         const isBank = tx.paymentMethod === 'BANK_TRANSFER'
@@ -105,17 +95,32 @@ export default async function KasaPage({ params }: any) {
       const cashBalance = cashIncome - cashExpense
       const bankBalance = bankIncome - bankExpense
 
-      // Map transactions to a simplified format for display
-      const transactions = allTransactions.map((tx: any) => {
-        let displayType = 'GELIR'
+      // Paginated query for the first page of transactions
+      const [totalCount, firstPageTxns] = await Promise.all([
+        (prisma as any).financeTransaction.count({ where: whereClause }),
+        (prisma as any).financeTransaction.findMany({
+          where: whereClause,
+          include: {
+            member: {
+              select: { id: true, firstName: true, lastName: true },
+            },
+          },
+          orderBy: { txnDate: 'desc' },
+          skip: 0,
+          take: PAGE_SIZE,
+        }),
+      ])
 
+      const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+
+      const transactions = firstPageTxns.map((tx: any) => {
+        let displayType = 'GELIR'
         if (tx.type === 'PAYMENT' || tx.type === 'REFUND') {
           displayType = 'GELIR'
         } else if (tx.type === 'ADJUSTMENT') {
           displayType = Number(tx.amount) >= 0 ? 'GELIR' : 'GIDER'
         }
 
-        // Build description: show member name if available, otherwise use note or "Dernek Kasası"
         let description = tx.note || 'İşlem'
         if (tx.member) {
           const memberName = `${tx.member.firstName} ${tx.member.lastName}`
@@ -142,6 +147,7 @@ export default async function KasaPage({ params }: any) {
         income,
         expense,
         transactions,
+        pagination: { page: 1, pageSize: PAGE_SIZE, totalCount, totalPages },
       }
     } catch (error) {
       console.error('Error fetching initial kasa data:', error)
@@ -192,7 +198,12 @@ export default async function KasaPage({ params }: any) {
           Gelir / Gider Raporu
         </LinkButton>
       </div>
-      <KasaClient org={org} canWrite={canWrite} initial={initial} />
+      <KasaClient
+        org={org}
+        canWrite={canWrite}
+        initial={initial}
+        today={new Date().toISOString().split('T')[0]}
+      />
     </div>
   )
 }
